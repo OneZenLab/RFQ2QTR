@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RFQ2QTR 解析器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 顶部工具栏 -->
+<header class="toolbar">
+  <div class="toolbar-left">
+    <span class="app-title">RFQ<span class="accent">2</span>QTR</span>
+    <label class="btn btn-import" for="file-input">
+      ⬆ 导入 Excel
+      <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
+    </label>
+    <span class="file-badge" id="file-name"></span>
+  </div>
+  <div class="toolbar-right">
+    <button class="btn btn-export" id="export-btn" disabled>⬇ 导出 Excel</button>
+  </div>
+</header>
+
+<!-- 主体 -->
+<div class="main">
+
+  <!-- 左侧面板 -->
+  <div class="left-panel" id="drop-zone">
+    <div class="tab-bar">
+      <button class="tab active" data-tab="raw">📊 原始数据</button>
+      <button class="tab"        data-tab="pre">🔍 预处理结果</button>
+    </div>
+
+    <!-- Tab 1：原始数据 -->
+    <div class="pane active" id="pane-raw">
+      <div class="drop-hint" id="hint-raw">
+        <div class="drop-icon">📂</div>
+        <div>将 Excel 文件拖拽到此处</div>
+        <div class="drop-sub">或点击上方「导入 Excel」按钮</div>
+      </div>
+      <div class="table-wrap" id="raw-wrap" hidden></div>
+    </div>
+
+    <!-- Tab 2：预处理结果 -->
+    <div class="pane" id="pane-pre">
+      <div class="drop-hint" id="hint-pre">
+        <div class="drop-icon">🔍</div>
+        <div>导入 Excel 后查看预处理详情</div>
+      </div>
+      <div class="scroll-area" id="pre-wrap" hidden></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 右侧面板 -->
+  <div class="right-panel">
+    <div class="panel-bar">
+      <span>✅ 处理结果</span>
+      <span class="row-count" id="row-count"></span>
+    </div>
+    <div class="table-wrap" id="result-wrap">
+      <div class="drop-hint">
+        <div class="drop-icon">📋</div>
+        <div>处理结果将在此显示</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/xlsx.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Stop-Process -Id 75664 -Force -ErrorAction SilentlyContinue; Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Host \"포트 3000 정리 완료\")",
+      "Bash(node -e \"require\\('./parser'\\)\")",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/api/parse -X POST)",
+      "Bash(node -e \"const {parseExcel}=require\\('./parser'\\); console.log\\('加载成功'\\);\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/xlsx.js)",
+      "PowerShell(Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Seconds 1; Start-Process -FilePath \"node\" -ArgumentList \"server.js\" -WorkingDirectory \"c:\\\\Develope\\\\OneZenLab\\\\RFQ2QTR\" -WindowStyle Hidden; Start-Sleep -Seconds 2; \\(Invoke-WebRequest -Uri \"http://localhost:3000/xlsx.js\" -UseBasicParsing\\).StatusCode)",
+      "Bash(node -e \"const XLSX=require\\('c:/Develope/OneZenLab/RFQ2QTR/node_modules/xlsx'\\); const wb=XLSX.readFile\\('c:/Develope/OneZenLab/RFQ2QTR/uploads/sample.xlsx'\\); console.log\\(wb.SheetNames\\)\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); console.log\\(JSON.parse\\(d\\).version\\)\")",
+      "PowerShell(\\(Get-Content \"c:\\\\Develope\\\\OneZenLab\\\\RFQ2QTR\\\\node_modules\\\\xlsx\\\\package.json\" | ConvertFrom-Json\\).version)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -Confirm:$false)"
+    ]
+  }
+}
