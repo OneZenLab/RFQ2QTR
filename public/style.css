@@ -226,7 +226,8 @@ thead th {
 tbody tr:nth-child(even) { background: #f6f8fa; }
 tbody tr:hover            { background: #e8f0fe; }
 tbody td {
-  padding: 5px 10px;
+  padding: 4px 10px;
+  line-height: 22px;           /* 大于 badge 最大高度(17px)，两栏行高锁死一致 */
   border-bottom: 1px solid #f0f0f0;
   white-space: nowrap;
   max-width: 260px;
@@ -259,6 +260,8 @@ tr.row-skip    td { color: #bbb; }
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1;            /* 阻断继承 td 的 22px，badge 实际高 = 11+4+2 = 17px */
+  vertical-align: middle;
 }
 .badge-parent  { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
 .badge-child   { background: #d4edda; color: #155724; border: 1px solid #28a745; }
@@ -281,14 +284,18 @@ tr.row-skip    td { color: #bbb; }
 }
 .section-block { border-bottom: 3px solid var(--border); }
 
-/* Tab2 完整描述列 */
+/* Tab2 完整描述列：单行截断，与右侧行高一致 */
 td.desc-cell {
-  max-width: 320px;
-  white-space: normal;
-  word-break: break-word;
-  line-height: 1.5;
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #555;
-  font-size: 11px;
+}
+
+/* 跨栏同步高亮 */
+tr.sync-hi > td {
+  background: #fff3cd !important;
 }
 
 code {

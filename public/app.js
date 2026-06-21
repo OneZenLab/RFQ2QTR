@@ -43,6 +43,7 @@ function readAsArrayBuffer(file) {
 
 /* ── 主逻辑：Tab1 客户端 + Tab2/右侧 服务端并行 ──────── */
 let currentResult = null;
+let _preTbody = null, _resultTbody = null;  // 用于跨栏同步高亮
 
 async function handleFile(file) {
   $('file-name').textContent = file.name;
@@ -68,12 +69,30 @@ async function handleFile(file) {
     currentResult = data;
     renderTabPre(data);
     renderResult(data);
+    attachSyncHover();          // 两表都渲染完毕后绑定同步高亮
     $('export-btn').disabled = false;
   } catch (err) {
     console.error('[RFQ2QTR] 服务端解析:', err);
     setError($('pane-pre'),   err.message);
     setError($('result-wrap'), err.message);
   }
+}
+
+/* ── 跨栏同步高亮 ────────────────────────────────────── */
+function attachSyncHover() {
+  if (!_preTbody || !_resultTbody) return;
+  const pairs = [[_preTbody, _resultTbody], [_resultTbody, _preTbody]];
+  pairs.forEach(([from, to]) => {
+    from.addEventListener('mouseover', e => {
+      const tr = e.target.closest('tr[data-seq]');
+      if (!tr) return;
+      to.querySelectorAll('tr.sync-hi').forEach(r => r.classList.remove('sync-hi'));
+      to.querySelector(`tr[data-seq="${tr.dataset.seq}"]`)?.classList.add('sync-hi');
+    });
+    from.addEventListener('mouseleave', () => {
+      to.querySelectorAll('tr.sync-hi').forEach(r => r.classList.remove('sync-hi'));
+    });
+  });
 }
 
 /* ── 辅助：loading / error 占位 ─────────────────────────*/
@@ -171,7 +190,10 @@ function renderTabPre(data) {
     if (r.type === 'parent')  tr.classList.add('row-parent');
     if (r.type === 'summary') tr.classList.add('row-summary');
 
-    if (r.type === 'child') seq++;
+    if (r.type === 'child') {
+      seq++;
+      tr.dataset.seq = String(seq);   // 供同步高亮使用
+    }
     addTd(tr, r.type === 'child' ? seq : '', 'row-num-col');
     addTd(tr, r.index + 1);
 
@@ -186,6 +208,7 @@ function renderTabPre(data) {
     tdDesc.title       = r.descText || '';
   });
 
+  _preTbody = tbody;
   mountTable(pane, table);
 }
 
@@ -215,11 +238,13 @@ function renderResult(data) {
   cols.forEach(c => addTh(hdrRow, c));
 
   const tbody = table.createTBody();
-  rows.forEach(row => {
+  rows.forEach((row, i) => {
     const tr = tbody.insertRow();
+    tr.dataset.seq = String(i + 1);   // 供同步高亮使用
     cols.forEach(c => addTd(tr, row[c] ?? ''));
   });
 
+  _resultTbody = tbody;
   wrap.innerHTML = '';
   const div = document.createElement('div');
   div.className = 'table-wrap';

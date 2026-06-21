@@ -574,6 +574,9 @@ function parseExcel(filePath) {
     // 解析子行
     const uniRow = parseRowToUni(rowObj, headers, idx, colSemantics, enumPatterns, ignoreCols, sizeCol);
 
+    // 序号 = Excel 实际行号（与 Tab2"行"列一致），1-based
+    uniRow.QTR_LINE = String(absIdx + 1);
+
     // 从父行继承未解析到的属性（Python 原有逻辑）
     for (const [k, v] of Object.entries(parentAttrs)) {
       if (!uniRow[k]) uniRow[k] = v;
