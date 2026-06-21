@@ -28,3 +28,6 @@ out/
 .DS_Store
 Thumbs.db
 *.swp
+
+# 测试文件
+QTR/
