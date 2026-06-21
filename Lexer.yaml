@@ -1,0 +1,314 @@
+# YAML格式的Lexer配置 - 适配管道配件数据解析的词法规则
+lexer:
+  # 基础词法规则定义
+  rules:
+    # 忽略的列名（匹配整词，不区分大小写）
+    ignore_cols:
+      pattern: ^(OLD|.*requirement|Extension|Item No|Part Number|Unit|Price|Unit price|U/P|Total price|T/P|U/weight|T/weight)$
+      flags: [IGNORECASE]
+      token_type: IGNORE_COLUMN
+    
+    # 描述类列名（匹配整词，不区分大小写）
+    description_columns:
+      pattern: ^(Description|DESC|Type|TYPE|Size|SIZE|Comment|COMMENT)$
+      flags: [IGNORECASE]
+      token_type: DESCRIPTION_COLUMN
+    
+    # Attr表识别关键字
+    attr_table_keywords:
+      keywords: ['item', 'qty', 'material', 'description', 'size', '序号', '数量', '订单价格']
+      material_related: true
+    
+    # 列名映射规则（源列名 -> 目标列名）
+    column_map:
+      token_type: COLUMN_MAPPING
+      mappings:
+        - source: ^(Item|No\.|Item No.*)$
+          target: QTR_LINE
+          flags: [IGNORECASE]
+        - source: ^(Material)$
+          target: UNI_MATERIAL
+          flags: [IGNORECASE]
+        - source: ^(Qty|Q'ty|.*Qty.*|.*Q'ty.*|.*requirement|数量)$
+          target: QTR_QTY
+          flags: [IGNORECASE]
+        - source: ^(Unit Price|Price|U/P|U-PRICE)$
+          target: QTR_PRICE
+          flags: [IGNORECASE]
+        - source: ^(SIZE1|DN1)$
+          target: UNI_OD1
+          flags: [IGNORECASE]
+        - source: ^(SIZE2|DN2)$
+          target: UNI_OD2
+          flags: [IGNORECASE]
+        - source: ^(END1|END2)$
+          target: UNI_END_PREPARATION
+          flags: [IGNORECASE]
+        - source: ^(SCH1)$
+          target: UNI_WT1
+          flags: [IGNORECASE]
+        - source: ^(SCH2)$
+          target: UNI_WT2
+          flags: [IGNORECASE]
+    
+    # 输出列名（匹配整词，严格大小写）
+    output_columns:
+      pattern: ^(QTR_LINE|QTR_QTY|QTR_PRICE|UNI_TYPE|UNI_ANGLE|UNI_RADIUS|UNI_MISC|UNI_OD1|UNI_OD2|UNI_OD3|UNI_WT1|UNI_WT2|UNI_WT3|UNI_DIM_SPEC|UNI_MATERIAL|UNI_CONSTRUCTION|UNI_END_PREPARATION)$
+      token_type: OUTPUT_COLUMN
+    
+    # 特殊类型拆分分隔符
+    special_split_separators:
+      pattern: [/\-,\s\*xX]
+      token_type: SPLIT_SEPARATOR
+      target_types: [TEE, RED]
+    
+    # 默认拆分分隔符
+    default_split_separators:
+      pattern: [/\-,\s\*xX]
+      token_type: SPLIT_SEPARATOR
+      default: true
+    
+    # OD范围解析规则（支持在文本中匹配，不限制必须是整行）
+    od_range_pattern:
+      pattern: \b((?:\d+|DN\d+|NB\d+))(?:"|')?\s*[\*Xx]\s*((?:\d+|DN\d+|NB\d+))(?:"|')?\b
+      token_type: OD_RANGE
+      flags: [IGNORECASE]
+    
+    # 重量映射规则
+    weight_mapping:
+      token_type: WEIGHT_MAPPING
+      special:
+        0: UNI_WT1
+        1: UNI_WT3
+      default:
+        0: UNI_WT1
+        1: UNI_WT2
+        2: UNI_WT3
+    
+    # 外径映射规则
+    od_mapping:
+      token_type: OD_MAPPING
+      special:
+        0: UNI_OD1
+        1: UNI_OD2
+      default:
+        0: UNI_OD1
+        1: UNI_OD2
+        2: UNI_OD3
+    
+    # UNI字段到Code字段的映射
+    uni_to_code_map:
+      QTR_LINE: 序号
+      QTR_QTY: 数量
+      QTR_PRICE: 订单价格
+      UNI_TYPE: 产品类型
+      UNI_ANGLE: 角度
+      UNI_RADIUS: 曲率
+      UNI_MISC: 其他属性
+      UNI_OD1: OD1
+      UNI_OD2: OD2
+      UNI_OD3: OD3
+      UNI_WT1: WT1
+      UNI_WT2: WT2
+      UNI_WT3: WT3
+      UNI_DIM_SPEC: 尺寸标准
+      UNI_MATERIAL: 产品材质
+      UNI_CONSTRUCTION: 产品结构
+      UNI_END_PREPARATION: 端口形式
+
+  # 枚举值词法规则（按类型分类，匹配包含任意枚举别名）
+  enums:
+    UNI_TYPE:
+      token_type: UNI_TYPE
+      mappings:
+        CAP:
+          pattern: \b(CAP|封头|管帽)\b
+          flags: [IGNORECASE]
+        ELB:
+          pattern: \b(BEND|ELB|ELBOWS?|ELL|弯头|弯管)\b
+          flags: [IGNORECASE]
+        RED:
+          pattern: \b(RED|REDUCER|CON|ECC|偏心|同心|大小头)\b
+          flags: [IGNORECASE]
+        TEE:
+          pattern: \b(TEE|TEE STRAIGHT|T|三通)\b
+          flags: [IGNORECASE]
+        STE:
+          pattern: \b(STE|STRAIGHT|直管|直通)\b
+          flags: [IGNORECASE]
+        XOS:
+          pattern: \b(XOS|CROSS|四通|十字通)\b
+          flags: [IGNORECASE]
+    
+    UNI_ANGLE:
+      token_type: UNI_ANGLE
+      mappings:
+        45:
+          pattern: \b(45|45D|45°|45 DEG|45度)\b
+          flags: [IGNORECASE]
+        90:
+          pattern: \b(90|90D|90°|90 DEG|90度)\b
+          flags: [IGNORECASE]
+        180:
+          pattern: \b(180|180D|180°|180 DEG|RETURN|180度)\b
+          flags: [IGNORECASE]
+    
+    UNI_RADIUS:
+      token_type: UNI_RADIUS
+      mappings:
+        LR:
+          pattern: (LR|LONG RADIUS|长半径)
+          flags: [IGNORECASE]
+        SR:
+          pattern: (SR|SHORT RADIUS|短半径)
+          flags: [IGNORECASE]
+    
+    UNI_MISC:
+      token_type: UNI_MISC
+      mappings:
+        CON: {pattern: \b(CON|CONCENTRIC)\b, flags: [IGNORECASE]}
+        ECC: {pattern: \b(ECC|ECCENTRIC|偏心|偏心异径)\b, flags: [IGNORECASE]}
+        EQL: {pattern: \b(EQL|EQUAL|STRAIGHT|等径)\b, flags: [IGNORECASE]}
+        RED: {pattern: \b(RED|REDUCING)\b, flags: [IGNORECASE]}
+        SHT: {pattern: \b(SHT|SHORT)\b, flags: [IGNORECASE]}
+    
+    UNI_OD:
+      token_type: UNI_OD
+      mappings:
+        "1 1/2": {pattern: \b(1.5|1-1/2|1 1/2|40NB|DN40)\b, flags: [IGNORECASE]}
+        "1 1/4": {pattern: \b(1.25|1-1/4|1 1/4|32NB|DN32)\b, flags: [IGNORECASE]}
+        "2 1/2": {pattern: \b(2.5|2-1/2|2 1/2|65NB|DN65)\b, flags: [IGNORECASE]}
+        "3 1/2": {pattern: \b(3.5|3-1/2|3 1/2|90NB|DN90)\b, flags: [IGNORECASE]}
+        "1/2": {pattern: \b(0.5|1/2|15NB|DN15)\b, flags: [IGNORECASE]}
+        "10": {pattern: \b(10|250NB|DN250)\b, flags: [IGNORECASE]}
+        "12": {pattern: \b(12|300NB|DN300)\b, flags: [IGNORECASE]}
+        "14": {pattern: \b(14|350NB|DN350)\b, flags: [IGNORECASE]}
+        "16": {pattern: \b(16|400NB|DN400)\b, flags: [IGNORECASE]}
+        "18": {pattern: \b(18|450NB|DN450)\b, flags: [IGNORECASE]}
+        "1": {pattern: \b(1|25NB|DN25)\b, flags: [IGNORECASE]}
+        "20": {pattern: \b(20|500NB|DN500)\b, flags: [IGNORECASE]}
+        "22": {pattern: \b(22|550NB|DN550)\b, flags: [IGNORECASE]}
+        "24": {pattern: \b(24|600NB|DN600)\b, flags: [IGNORECASE]}
+        "26": {pattern: \b(26|650NB|DN650)\b, flags: [IGNORECASE]}
+        "28": {pattern: \b(28|700NB|DN700)\b, flags: [IGNORECASE]}
+        "2": {pattern: \b(2|50NB|DN50)\b, flags: [IGNORECASE]}
+        "3/4": {pattern: \b(0.75|3/4|20NB|DN20)\b, flags: [IGNORECASE]}
+        "3/8": {pattern: \b(0.375|3/8|10NB|DN10)\b, flags: [IGNORECASE]}
+        "30": {pattern: \b(30|750NB|DN750)\b, flags: [IGNORECASE]}
+        "32": {pattern: \b(32|800NB|DN800)\b, flags: [IGNORECASE]}
+        "34": {pattern: \b(34|850NB|DN850)\b, flags: [IGNORECASE]}
+        "36": {pattern: \b(36|900NB|DN900)\b, flags: [IGNORECASE]}
+        "3": {pattern: \b(3|80NB|DN80)\b, flags: [IGNORECASE]}
+        "42": {pattern: \b(42|1050NB|DN1050)\b, flags: [IGNORECASE]}
+        "44": {pattern: \b(44|1100NB|DN1100)\b, flags: [IGNORECASE]}
+        "48": {pattern: \b(48|1200NB|DN1200)\b, flags: [IGNORECASE]}
+        "4": {pattern: \b(4|100NB|DN100)\b, flags: [IGNORECASE]}
+        "54": {pattern: \b(54|1350NB|DN1350)\b, flags: [IGNORECASE]}
+        "56": {pattern: \b(56|1400NB|DN1400)\b, flags: [IGNORECASE]}
+        "5": {pattern: \b(5|125NB|DN125)\b, flags: [IGNORECASE]}
+        "60": {pattern: \b(60|1500NB|DN1500)\b, flags: [IGNORECASE]}
+        "64": {pattern: \b(64|1600NB|DN1600)\b, flags: [IGNORECASE]}
+        "6": {pattern: \b(6|150NB|DN150)\b, flags: [IGNORECASE]}
+        "80": {pattern: \b(80|2000NB|DN2000)\b, flags: [IGNORECASE]}
+        "8": {pattern: \b(8|200NB|DN200)\b, flags: [IGNORECASE]}
+    
+    UNI_WT:
+      token_type: UNI_WT
+      mappings:
+        S10S: {pattern: \b(S10S|S/10S|S-10S)\b, flags: [IGNORECASE]}
+        S100: {pattern: \b(S100|S/100|S-100)\b, flags: [IGNORECASE]}
+        S120: {pattern: \b(S120|S/120|S-120)\b, flags: [IGNORECASE]}
+        S140: {pattern: \b(S140|S/140|S-140)\b, flags: [IGNORECASE]}
+        S160: {pattern: \b(S160|S/160|S-160)\b, flags: [IGNORECASE]}
+        S10: {pattern: \b(S10|S/10)\b, flags: [IGNORECASE]}
+        S20: {pattern: \b(S20|S/20|S-20)\b, flags: [IGNORECASE]}
+        S30: {pattern: \b(S30|S/30|S-30)\b, flags: [IGNORECASE]}
+        STD: {pattern: STD, flags: [IGNORECASE]}
+        S40S: {pattern: \b(S40S|S/40S|S-40S)\b, flags: [IGNORECASE]}
+        S40: {pattern: \b(S40|S/40|S-40)\b, flags: [IGNORECASE]}
+        S60S: {pattern: \b(S60S|S/60S|S-60S)\b, flags: [IGNORECASE]}
+        S60: {pattern: \b(S60|S/60|S-60)\b, flags: [IGNORECASE]}
+        XXS: {pattern: XXS, flags: [IGNORECASE]}
+        XS: {pattern: (XH|XS), flags: [IGNORECASE]}
+        S80S: {pattern: \b(S80S|S/80S|S-80S)\b, flags: [IGNORECASE]}
+        S80: {pattern: \b(S80|S/80|S-80|SCH 80)\b, flags: [IGNORECASE]}
+    
+    UNI_DIM_SPEC:
+      token_type: UNI_DIM_SPEC
+      mappings:
+        "ASME B16.9": {pattern: \b(ASME B16.9|B16.9|ASTM A234|ASTM A403)\b, flags: [IGNORECASE]}
+        "ASME B16.9 S58": {pattern: (ASME B16.9 S58|ASME B16.9S58), flags: [IGNORECASE]}
+    
+    UNI_MATERIAL:
+      token_type: UNI_MATERIAL
+      mappings:
+        WPB:
+          pattern: \b(ASTM\s*A234[\s\-]*WPB|A234[\s\-]*WPB|A234\s*Gr\.[\s\-]*WPB|WPB)\b
+          flags: [IGNORECASE]
+        16MO3: {pattern: 16MO3, flags: [IGNORECASE]}
+        WP11 CL1: {pattern: \b(WP11.*CL1|WP11.*CL1\.1|WP11.*Class 1|WP11.*Cl\.1)\b, flags: [IGNORECASE]}
+        WP11 CL2: {pattern: \b(WP11.*CL2|WP11.*CL2\.1|WP11.*Class 2|WP11.*Cl\.2)\b, flags: [IGNORECASE]}
+        WP11 CL3: {pattern: \b(WP11.*CL3|WP11.*CL3\.1|WP11.*Class 3|WP11.*Cl\.3)\b, flags: [IGNORECASE]}
+        WP11: {pattern: \b(WP11|WP11.*)\b, flags: [IGNORECASE]}
+        WP22 CL1: {pattern: \b(WP22.*CL1|WP22.*CL1\.1|WP22.*Class 1|WP22.*Cl\.1)\b, flags: [IGNORECASE]}
+        WP22 CL2: {pattern: \b(WP22.*CL2|WP22.*CL2\.1|WP22.*Class 2|WP22.*Cl\.2)\b, flags: [IGNORECASE]}
+        WP22 CL3: {pattern: \b(WP22.*CL3|WP22.*CL3\.1|WP22.*Class 3|WP22.*Cl\.3)\b, flags: [IGNORECASE]}
+        WP22: {pattern: \b(WP22|WP22.*)\b, flags: [IGNORECASE]}   
+        WP304/304L: {pattern: \b(304/304L|WP304/304L|WP304/304L-S)\b, flags: [IGNORECASE]}
+        WP304H: {pattern: \b(304H|WP304H|WP304H-S)\b, flags: [IGNORECASE]}
+        WP304L: {pattern: \b(304L|WP304L|WP304L-S)\b, flags: [IGNORECASE]}
+        WP304: {pattern: \b(304|WP304|WP304-S)\b, flags: [IGNORECASE]}
+        WP316/316L: {pattern: \b(316/316L|WP316/316L|WP316/316L-S)\b, flags: [IGNORECASE]}
+        WP316L: {pattern: \b(316L|WP316L|WP316L-S)\b, flags: [IGNORECASE]}
+        WP316: {pattern: \b(316|WP316|WP316-S)\b, flags: [IGNORECASE]}
+        WP321: {pattern: \b(321|WP321|WP321-S)\b, flags: [IGNORECASE]}
+        WP347H: {pattern: \b(347H|WP347H|WP347H-S)\b, flags: [IGNORECASE]} 
+        P235GH: {pattern: \b(P235GH)\b, flags: [IGNORECASE]}
+        S235: {pattern: \b(S235)\b, flags: [IGNORECASE]}
+        S265: {pattern: \b(S265)\b, flags: [IGNORECASE]}
+        S31803: {pattern: \b(S31803)\b, flags: [IGNORECASE]}
+        SGP: {pattern: \b(SGP)\b, flags: [IGNORECASE]}
+        ST35.8: {pattern: \b(ST35.8)\b, flags: [IGNORECASE]}
+        ST52.3: {pattern: \b(ST52.3)\b, flags: [IGNORECASE]}
+        WP5: {pattern: \b(WP5)\b, flags: [IGNORECASE]}
+        WP9 CL1: {pattern: \b(WP9 CL1|WP9 CL1.1|WP9 Class 1)\b, flags: [IGNORECASE]}
+        WP9: {pattern: \b(WP9)\b, flags: [IGNORECASE]}   
+        WPC: {pattern: \b(WPC)\b, flags: [IGNORECASE]}  
+        WPHC42: {pattern: \b(WPHC42)\b, flags: [IGNORECASE]}
+        WPHY52: {pattern: \b(WPHY52)\b, flags: [IGNORECASE]}
+        WPHY56: {pattern: \b(WPHY56)\b, flags: [IGNORECASE]}
+        WPHY60: {pattern: \b(WPHY60)\b, flags: [IGNORECASE]}
+        WPHY65: {pattern: \b(WPHY65)\b, flags: [IGNORECASE]}
+        WPL3: {pattern: \b(WPL3)\b, flags: [IGNORECASE]}
+        WPL6: {pattern: \b(WPL6|A420 WPL6)\b, flags: [IGNORECASE]}
+        X52: {pattern: \b(X52)\b, flags: [IGNORECASE]}
+        X65Q: {pattern: \b(X65Q)\b, flags: [IGNORECASE]}  
+    
+    UNI_CONSTRUCTION:
+      token_type: UNI_CONSTRUCTION
+      mappings:
+        S: {pattern: \b(S|SMLS|SEAMLESS|无缝式)\b, flags: [IGNORECASE]}
+        W: {pattern: \b(W|WELDED|焊接式)\b, flags: [IGNORECASE]}
+        F: {pattern: \b(F|FORGED|锻造式)\b, flags: [IGNORECASE]}
+        C: {pattern: \b(C|CAST|铸造式)\b, flags: [IGNORECASE]}
+        M: {pattern: \b(M|MACHINED|机加工式)\b, flags: [IGNORECASE]}
+        AS: {pattern: \b(AS|ASSEMBLED|组装式)\b, flags: [IGNORECASE]}
+    
+    UNI_END_PREPARATION:
+      token_type: UNI_END_PREPARATION
+      mappings:
+        BW: {pattern: (BW|BE|Beveled End|BUTT WELD|对焊), flags: [IGNORECASE]}
+        SW: {pattern: (SW|SOCKET WELD|承插焊), flags: [IGNORECASE]}
+        THD: {pattern: (THD|THREADED|NPT|螺纹端), flags: [IGNORECASE]}
+        PE: {pattern: (PE|PLAIN END|平端), flags: [IGNORECASE]}
+        BE: {pattern: (BE|BEVELED END|坡口端), flags: [IGNORECASE]}
+        FL: {pattern: (FL|FLANGE|法兰端), flags: [IGNORECASE]}
+        GRO: {pattern: (GRO|GROOVED|沟槽端), flags: [IGNORECASE]}
+        LAP: {pattern: (LAP|LAP JOINT|松套法兰端), flags: [IGNORECASE]}
+
+  # Lexer全局配置
+  config:
+    case_insensitive: true  # 全局默认忽略大小写
+    whitespace_allowed: true  # 允许匹配包含空格的文本
+    multi_line: false  # 单行匹配模式
+    comment_prefix: '#'  # 保留原文件的注释前缀
