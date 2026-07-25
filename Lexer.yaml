@@ -1,80 +1,116 @@
-# YAML格式的Lexer配置 - 适配管道配件数据解析的词法规则
+# Lexer配置 v2 - 支持 FITTING / FLANGE / BOLT / GASKET 多品类
 lexer:
-  # 基础词法规则定义
   rules:
-    # 忽略的列名（匹配整词，不区分大小写）
     ignore_cols:
       pattern: ^(OLD|.*requirement|Extension|Item No|Part Number|Unit|Price|Unit price|U/P|Total price|T/P|U/weight|T/weight)$
-      flags: [IGNORECASE]
+      flags:
+      - IGNORECASE
       token_type: IGNORE_COLUMN
-    
-    # 描述类列名（匹配整词，不区分大小写）
     description_columns:
       pattern: ^(Description|DESC|Type|TYPE|Size|SIZE|Comment|COMMENT)$
-      flags: [IGNORECASE]
+      flags:
+      - IGNORECASE
       token_type: DESCRIPTION_COLUMN
-    
-    # Attr表识别关键字
     attr_table_keywords:
-      keywords: ['item', 'qty', 'material', 'description', 'size', '序号', '数量', '订单价格']
+      keywords:
+      - item
+      - qty
+      - material
+      - description
+      - size
+      - 序号
+      - 数量
+      - 订单价格
       material_related: true
-    
-    # 列名映射规则（源列名 -> 目标列名）
     column_map:
       token_type: COLUMN_MAPPING
       mappings:
-        - source: ^(Item|No\.|Item No.*)$
-          target: QTR_LINE
-          flags: [IGNORECASE]
-        - source: ^(Material)$
-          target: UNI_MATERIAL
-          flags: [IGNORECASE]
-        - source: ^(Qty|Q'ty|.*Qty.*|.*Q'ty.*|.*requirement|数量)$
-          target: QTR_QTY
-          flags: [IGNORECASE]
-        - source: ^(Unit Price|Price|U/P|U-PRICE)$
-          target: QTR_PRICE
-          flags: [IGNORECASE]
-        - source: ^(SIZE1|DN1)$
-          target: UNI_OD1
-          flags: [IGNORECASE]
-        - source: ^(SIZE2|DN2)$
-          target: UNI_OD2
-          flags: [IGNORECASE]
-        - source: ^(END1|END2)$
-          target: UNI_END_PREPARATION
-          flags: [IGNORECASE]
-        - source: ^(SCH1)$
-          target: UNI_WT1
-          flags: [IGNORECASE]
-        - source: ^(SCH2)$
-          target: UNI_WT2
-          flags: [IGNORECASE]
-    
-    # 输出列名（匹配整词，严格大小写）
+      - source: ^(Item|No\.|Item No.*)$
+        target: QTR_LINE
+        flags:
+        - IGNORECASE
+      - source: ^(Material)$
+        target: UNI_MATERIAL
+        flags:
+        - IGNORECASE
+      - source: ^(Qty|Q'ty|.*Qty.*|.*Q'ty.*|.*Quantit.*|.*requirement|数量)$
+        target: QTR_QTY
+        flags:
+        - IGNORECASE
+      - source: ^(Unit Price|Price|U/P|U-PRICE)$
+        target: QTR_PRICE
+        flags:
+        - IGNORECASE
+      - source: ^(SIZE1|DN1)$
+        target: UNI_OD1
+        flags:
+        - IGNORECASE
+      - source: ^(SIZE2|DN2)$
+        target: UNI_OD2
+        flags:
+        - IGNORECASE
+      - source: ^(END1|END2)$
+        target: UNI_END_PREPARATION
+        flags:
+        - IGNORECASE
+      - source: ^(SCH1)$
+        target: UNI_WT1
+        flags:
+        - IGNORECASE
+      - source: ^(SCH2)$
+        target: UNI_WT2
+        flags:
+        - IGNORECASE
+      - source: ^(Class|Rating|Pressure Class|压力等级|PN)$
+        target: UNI_PRESSURE_CLASS
+        flags:
+        - IGNORECASE
+      - source: ^(Facing|Face|端面形式|密封面)$
+        target: UNI_FACING
+        flags:
+        - IGNORECASE
+      - source: ^(Grade|Bolt Grade|螺栓等级)$
+        target: UNI_BOLT_GRADE
+        flags:
+        - IGNORECASE
+      - source: ^(Length|Bolt Length|螺栓长度)$
+        target: UNI_BOLT_LENGTH
+        flags:
+        - IGNORECASE
+      - source: ^(Thread|Thread Type|螺纹类型)$
+        target: UNI_THREAD_TYPE
+        flags:
+        - IGNORECASE
+      - source: ^(Gasket Type|垫片类型|垫片形式)$
+        target: UNI_GASKET_TYPE
+        flags:
+        - IGNORECASE
+      - source: ^(Thickness|垫片厚度)$
+        target: UNI_GASKET_THK
+        flags:
+        - IGNORECASE
     output_columns:
-      pattern: ^(QTR_LINE|QTR_QTY|QTR_PRICE|UNI_TYPE|UNI_ANGLE|UNI_RADIUS|UNI_MISC|UNI_OD1|UNI_OD2|UNI_OD3|UNI_WT1|UNI_WT2|UNI_WT3|UNI_DIM_SPEC|UNI_MATERIAL|UNI_CONSTRUCTION|UNI_END_PREPARATION)$
+      pattern: ^(QTR_LINE|QTR_QTY|QTR_PRICE|UNI_CATEGORY|UNI_TYPE|UNI_ANGLE|UNI_RADIUS|UNI_MISC|UNI_OD1|UNI_OD2|UNI_OD3|UNI_WT1|UNI_WT2|UNI_WT3|UNI_DIM_SPEC|UNI_MATERIAL|UNI_CONSTRUCTION|UNI_END_PREPARATION|UNI_PRESSURE_CLASS|UNI_FACING|UNI_BOLT_GRADE|UNI_BOLT_LENGTH|UNI_THREAD_TYPE|UNI_GASKET_TYPE|UNI_GASKET_THK)$
       token_type: OUTPUT_COLUMN
-    
-    # 特殊类型拆分分隔符
     special_split_separators:
-      pattern: [/\-,\s\*xX]
+      pattern:
+      - /\-
+      - \s\*xX
       token_type: SPLIT_SEPARATOR
-      target_types: [TEE, RED]
-    
-    # 默认拆分分隔符
+      target_types:
+      - TEE
+      - RED
     default_split_separators:
-      pattern: [/\-,\s\*xX]
+      pattern:
+      - /\-
+      - \s\*xX
       token_type: SPLIT_SEPARATOR
       default: true
-    
-    # OD范围解析规则（支持在文本中匹配，不限制必须是整行）
     od_range_pattern:
       pattern: \b((?:\d+|DN\d+|NB\d+))(?:"|')?\s*[\*Xx]\s*((?:\d+|DN\d+|NB\d+))(?:"|')?\b
       token_type: OD_RANGE
-      flags: [IGNORECASE]
-    
-    # 重量映射规则
+      flags:
+      - IGNORECASE
     weight_mapping:
       token_type: WEIGHT_MAPPING
       special:
@@ -84,8 +120,6 @@ lexer:
         0: UNI_WT1
         1: UNI_WT2
         2: UNI_WT3
-    
-    # 外径映射规则
     od_mapping:
       token_type: OD_MAPPING
       special:
@@ -95,8 +129,6 @@ lexer:
         0: UNI_OD1
         1: UNI_OD2
         2: UNI_OD3
-    
-    # UNI字段到Code字段的映射
     uni_to_code_map:
       QTR_LINE: 序号
       QTR_QTY: 数量
@@ -115,200 +147,993 @@ lexer:
       UNI_MATERIAL: 产品材质
       UNI_CONSTRUCTION: 产品结构
       UNI_END_PREPARATION: 端口形式
-
-  # 枚举值词法规则（按类型分类，匹配包含任意枚举别名）
+      UNI_CATEGORY: 品类
+      UNI_PRESSURE_CLASS: 压力等级
+      UNI_FACING: 密封面形式
+      UNI_BOLT_GRADE: 螺栓等级
+      UNI_BOLT_LENGTH: 螺栓长度
+      UNI_THREAD_TYPE: 螺纹类型
+      UNI_GASKET_TYPE: 垫片类型
+      UNI_GASKET_THK: 垫片厚度
   enums:
+    UNI_CATEGORY:
+      token_type: UNI_CATEGORY
+      mappings:
+        FITTING:
+          pattern: \b(FITTING|FITTINGS|管件)\b
+          flags:
+          - IGNORECASE
+        FLANGE:
+          pattern: \b(FLANGE|FLANGES|法兰)\b
+          flags:
+          - IGNORECASE
+        BOLT:
+          pattern: \b(BOLT|BOLTS|STUD|STUDS|螺栓|螺柱|双头螺栓)\b
+          flags:
+          - IGNORECASE
+        GASKET:
+          pattern: \b(GASKET|GASKETS|垫片|密封垫)\b
+          flags:
+          - IGNORECASE
+        NUT:
+          pattern: \b(NUT|NUTS|螺母|螺帽)\b
+          flags:
+          - IGNORECASE
+        INSULATION_KIT:
+          pattern: \b(INSULATION KIT|INS\.?\s*KIT|绝缘套件|绝缘法兰套件)\b
+          flags:
+          - IGNORECASE
     UNI_TYPE:
       token_type: UNI_TYPE
       mappings:
         CAP:
           pattern: \b(CAP|封头|管帽)\b
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         ELB:
           pattern: \b(BEND|ELB|ELBOWS?|ELL|弯头|弯管)\b
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         RED:
           pattern: \b(RED|REDUCER|CON|ECC|偏心|同心|大小头)\b
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         TEE:
           pattern: \b(TEE|TEE STRAIGHT|T|三通)\b
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         STE:
           pattern: \b(STE|STRAIGHT|直管|直通)\b
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         XOS:
           pattern: \b(XOS|CROSS|四通|十字通)\b
-          flags: [IGNORECASE]
-    
+          flags:
+          - IGNORECASE
+        WN:
+          pattern: \b(WN|WELD NECK|WELDING NECK|焊颈法兰)\b
+          flags:
+          - IGNORECASE
+        SO:
+          pattern: \b(SO|SLIP.?ON|滑套法兰|平焊法兰)\b
+          flags:
+          - IGNORECASE
+        BL:
+          pattern: \b(BL|BLIND|盲法兰|盲板)\b
+          flags:
+          - IGNORECASE
+        SW_FL:
+          pattern: \b(SOCKET.?WELD FLANGE|承插焊法兰)\b
+          flags:
+          - IGNORECASE
+        THD_FL:
+          pattern: \b(THREADED FLANGE|螺纹法兰)\b
+          flags:
+          - IGNORECASE
+        LJ:
+          pattern: \b(LJ|LAP.?JOINT|松套法兰)\b
+          flags:
+          - IGNORECASE
+        OR:
+          pattern: \b(OR|ORIFICE|孔板法兰)\b
+          flags:
+          - IGNORECASE
+        STUD:
+          pattern: \b(STUD BOLT|STUD|双头螺栓|螺柱)\b
+          flags:
+          - IGNORECASE
+        HEX:
+          pattern: \b(HEX BOLT|六角螺栓)\b
+          flags:
+          - IGNORECASE
+        SW_GSK:
+          pattern: \b(SPIRAL WOUND|SW GASKET|缠绕式垫片|金属缠绕垫)\b
+          flags:
+          - IGNORECASE
+        RF_GSK:
+          pattern: \b(RING.?JOINT|RTJ GASKET|环形垫|金属环垫)\b
+          flags:
+          - IGNORECASE
+        FF_GSK:
+          pattern: \b(FULL.?FACE|FF GASKET|全面式垫片)\b
+          flags:
+          - IGNORECASE
+        NRS:
+          pattern: \b(NON.?METALLIC|COMPRESSED|非金属垫|柔性石墨垫)\b
+          flags:
+          - IGNORECASE
     UNI_ANGLE:
       token_type: UNI_ANGLE
       mappings:
         45:
           pattern: \b(45|45D|45°|45 DEG|45度)\b
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         90:
           pattern: \b(90|90D|90°|90 DEG|90度)\b
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         180:
           pattern: \b(180|180D|180°|180 DEG|RETURN|180度)\b
-          flags: [IGNORECASE]
-    
+          flags:
+          - IGNORECASE
     UNI_RADIUS:
       token_type: UNI_RADIUS
       mappings:
         LR:
           pattern: (LR|LONG RADIUS|长半径)
-          flags: [IGNORECASE]
+          flags:
+          - IGNORECASE
         SR:
           pattern: (SR|SHORT RADIUS|短半径)
-          flags: [IGNORECASE]
-    
+          flags:
+          - IGNORECASE
     UNI_MISC:
       token_type: UNI_MISC
       mappings:
-        CON: {pattern: \b(CON|CONCENTRIC)\b, flags: [IGNORECASE]}
-        ECC: {pattern: \b(ECC|ECCENTRIC|偏心|偏心异径)\b, flags: [IGNORECASE]}
-        EQL: {pattern: \b(EQL|EQUAL|STRAIGHT|等径)\b, flags: [IGNORECASE]}
-        RED: {pattern: \b(RED|REDUCING)\b, flags: [IGNORECASE]}
-        SHT: {pattern: \b(SHT|SHORT)\b, flags: [IGNORECASE]}
-    
+        CON:
+          pattern: \b(CON|CONCENTRIC)\b
+          flags:
+          - IGNORECASE
+        ECC:
+          pattern: \b(ECC|ECCENTRIC|偏心|偏心异径)\b
+          flags:
+          - IGNORECASE
+        EQL:
+          pattern: \b(EQL|EQUAL|STRAIGHT|等径)\b
+          flags:
+          - IGNORECASE
+        RED:
+          pattern: \b(RED|REDUCING)\b
+          flags:
+          - IGNORECASE
+        SHT:
+          pattern: \b(SHT|SHORT)\b
+          flags:
+          - IGNORECASE
     UNI_OD:
       token_type: UNI_OD
       mappings:
-        "1 1/2": {pattern: \b(1.5|1-1/2|1 1/2|40NB|DN40)\b, flags: [IGNORECASE]}
-        "1 1/4": {pattern: \b(1.25|1-1/4|1 1/4|32NB|DN32)\b, flags: [IGNORECASE]}
-        "2 1/2": {pattern: \b(2.5|2-1/2|2 1/2|65NB|DN65)\b, flags: [IGNORECASE]}
-        "3 1/2": {pattern: \b(3.5|3-1/2|3 1/2|90NB|DN90)\b, flags: [IGNORECASE]}
-        "1/2": {pattern: \b(0.5|1/2|15NB|DN15)\b, flags: [IGNORECASE]}
-        "10": {pattern: \b(10|250NB|DN250)\b, flags: [IGNORECASE]}
-        "12": {pattern: \b(12|300NB|DN300)\b, flags: [IGNORECASE]}
-        "14": {pattern: \b(14|350NB|DN350)\b, flags: [IGNORECASE]}
-        "16": {pattern: \b(16|400NB|DN400)\b, flags: [IGNORECASE]}
-        "18": {pattern: \b(18|450NB|DN450)\b, flags: [IGNORECASE]}
-        "1": {pattern: \b(1|25NB|DN25)\b, flags: [IGNORECASE]}
-        "20": {pattern: \b(20|500NB|DN500)\b, flags: [IGNORECASE]}
-        "22": {pattern: \b(22|550NB|DN550)\b, flags: [IGNORECASE]}
-        "24": {pattern: \b(24|600NB|DN600)\b, flags: [IGNORECASE]}
-        "26": {pattern: \b(26|650NB|DN650)\b, flags: [IGNORECASE]}
-        "28": {pattern: \b(28|700NB|DN700)\b, flags: [IGNORECASE]}
-        "2": {pattern: \b(2|50NB|DN50)\b, flags: [IGNORECASE]}
-        "3/4": {pattern: \b(0.75|3/4|20NB|DN20)\b, flags: [IGNORECASE]}
-        "3/8": {pattern: \b(0.375|3/8|10NB|DN10)\b, flags: [IGNORECASE]}
-        "30": {pattern: \b(30|750NB|DN750)\b, flags: [IGNORECASE]}
-        "32": {pattern: \b(32|800NB|DN800)\b, flags: [IGNORECASE]}
-        "34": {pattern: \b(34|850NB|DN850)\b, flags: [IGNORECASE]}
-        "36": {pattern: \b(36|900NB|DN900)\b, flags: [IGNORECASE]}
-        "3": {pattern: \b(3|80NB|DN80)\b, flags: [IGNORECASE]}
-        "42": {pattern: \b(42|1050NB|DN1050)\b, flags: [IGNORECASE]}
-        "44": {pattern: \b(44|1100NB|DN1100)\b, flags: [IGNORECASE]}
-        "48": {pattern: \b(48|1200NB|DN1200)\b, flags: [IGNORECASE]}
-        "4": {pattern: \b(4|100NB|DN100)\b, flags: [IGNORECASE]}
-        "54": {pattern: \b(54|1350NB|DN1350)\b, flags: [IGNORECASE]}
-        "56": {pattern: \b(56|1400NB|DN1400)\b, flags: [IGNORECASE]}
-        "5": {pattern: \b(5|125NB|DN125)\b, flags: [IGNORECASE]}
-        "60": {pattern: \b(60|1500NB|DN1500)\b, flags: [IGNORECASE]}
-        "64": {pattern: \b(64|1600NB|DN1600)\b, flags: [IGNORECASE]}
-        "6": {pattern: \b(6|150NB|DN150)\b, flags: [IGNORECASE]}
-        "80": {pattern: \b(80|2000NB|DN2000)\b, flags: [IGNORECASE]}
-        "8": {pattern: \b(8|200NB|DN200)\b, flags: [IGNORECASE]}
-    
+        1 1/2:
+          pattern: \b(1.5|1-1/2|1 1/2|40NB|DN40)\b
+          flags:
+          - IGNORECASE
+        1 1/4:
+          pattern: \b(1.25|1-1/4|1 1/4|32NB|DN32)\b
+          flags:
+          - IGNORECASE
+        2 1/2:
+          pattern: \b(2.5|2-1/2|2 1/2|65NB|DN65)\b
+          flags:
+          - IGNORECASE
+        3 1/2:
+          pattern: \b(3.5|3-1/2|3 1/2|90NB|DN90)\b
+          flags:
+          - IGNORECASE
+        1/2:
+          pattern: \b(0.5|1/2|15NB|DN15)\b
+          flags:
+          - IGNORECASE
+        '10':
+          pattern: \b(10|250NB|DN250)\b
+          flags:
+          - IGNORECASE
+        '12':
+          pattern: \b(12|300NB|DN300)\b
+          flags:
+          - IGNORECASE
+        '14':
+          pattern: \b(14|350NB|DN350)\b
+          flags:
+          - IGNORECASE
+        '16':
+          pattern: \b(16|400NB|DN400)\b
+          flags:
+          - IGNORECASE
+        '18':
+          pattern: \b(18|450NB|DN450)\b
+          flags:
+          - IGNORECASE
+        '1':
+          pattern: \b(1|25NB|DN25)\b
+          flags:
+          - IGNORECASE
+        '20':
+          pattern: \b(20|500NB|DN500)\b
+          flags:
+          - IGNORECASE
+        '22':
+          pattern: \b(22|550NB|DN550)\b
+          flags:
+          - IGNORECASE
+        '24':
+          pattern: \b(24|600NB|DN600)\b
+          flags:
+          - IGNORECASE
+        '26':
+          pattern: \b(26|650NB|DN650)\b
+          flags:
+          - IGNORECASE
+        '28':
+          pattern: \b(28|700NB|DN700)\b
+          flags:
+          - IGNORECASE
+        '2':
+          pattern: \b(2|50NB|DN50)\b
+          flags:
+          - IGNORECASE
+        3/4:
+          pattern: \b(0.75|3/4|20NB|DN20)\b
+          flags:
+          - IGNORECASE
+        3/8:
+          pattern: \b(0.375|3/8|10NB|DN10)\b
+          flags:
+          - IGNORECASE
+        '30':
+          pattern: \b(30|750NB|DN750)\b
+          flags:
+          - IGNORECASE
+        '32':
+          pattern: \b(32|800NB|DN800)\b
+          flags:
+          - IGNORECASE
+        '34':
+          pattern: \b(34|850NB|DN850)\b
+          flags:
+          - IGNORECASE
+        '36':
+          pattern: \b(36|900NB|DN900)\b
+          flags:
+          - IGNORECASE
+        '3':
+          pattern: \b(3|80NB|DN80)\b
+          flags:
+          - IGNORECASE
+        '42':
+          pattern: \b(42|1050NB|DN1050)\b
+          flags:
+          - IGNORECASE
+        '44':
+          pattern: \b(44|1100NB|DN1100)\b
+          flags:
+          - IGNORECASE
+        '48':
+          pattern: \b(48|1200NB|DN1200)\b
+          flags:
+          - IGNORECASE
+        '4':
+          pattern: \b(4|100NB|DN100)\b
+          flags:
+          - IGNORECASE
+        '54':
+          pattern: \b(54|1350NB|DN1350)\b
+          flags:
+          - IGNORECASE
+        '56':
+          pattern: \b(56|1400NB|DN1400)\b
+          flags:
+          - IGNORECASE
+        '5':
+          pattern: \b(5|125NB|DN125)\b
+          flags:
+          - IGNORECASE
+        '60':
+          pattern: \b(60|1500NB|DN1500)\b
+          flags:
+          - IGNORECASE
+        '64':
+          pattern: \b(64|1600NB|DN1600)\b
+          flags:
+          - IGNORECASE
+        '6':
+          pattern: \b(6|150NB|DN150)\b
+          flags:
+          - IGNORECASE
+        '80':
+          pattern: \b(80|2000NB|DN2000)\b
+          flags:
+          - IGNORECASE
+        '8':
+          pattern: \b(8|200NB|DN200)\b
+          flags:
+          - IGNORECASE
     UNI_WT:
       token_type: UNI_WT
       mappings:
-        S10S: {pattern: \b(S10S|S/10S|S-10S)\b, flags: [IGNORECASE]}
-        S100: {pattern: \b(S100|S/100|S-100)\b, flags: [IGNORECASE]}
-        S120: {pattern: \b(S120|S/120|S-120)\b, flags: [IGNORECASE]}
-        S140: {pattern: \b(S140|S/140|S-140)\b, flags: [IGNORECASE]}
-        S160: {pattern: \b(S160|S/160|S-160)\b, flags: [IGNORECASE]}
-        S10: {pattern: \b(S10|S/10)\b, flags: [IGNORECASE]}
-        S20: {pattern: \b(S20|S/20|S-20)\b, flags: [IGNORECASE]}
-        S30: {pattern: \b(S30|S/30|S-30)\b, flags: [IGNORECASE]}
-        STD: {pattern: STD, flags: [IGNORECASE]}
-        S40S: {pattern: \b(S40S|S/40S|S-40S)\b, flags: [IGNORECASE]}
-        S40: {pattern: \b(S40|S/40|S-40)\b, flags: [IGNORECASE]}
-        S60S: {pattern: \b(S60S|S/60S|S-60S)\b, flags: [IGNORECASE]}
-        S60: {pattern: \b(S60|S/60|S-60)\b, flags: [IGNORECASE]}
-        XXS: {pattern: XXS, flags: [IGNORECASE]}
-        XS: {pattern: (XH|XS), flags: [IGNORECASE]}
-        S80S: {pattern: \b(S80S|S/80S|S-80S)\b, flags: [IGNORECASE]}
-        S80: {pattern: \b(S80|S/80|S-80|SCH 80)\b, flags: [IGNORECASE]}
-    
+        S10S:
+          pattern: \b(S10S|S/10S|S-10S)\b
+          flags:
+          - IGNORECASE
+        S100:
+          pattern: \b(S100|S/100|S-100)\b
+          flags:
+          - IGNORECASE
+        S120:
+          pattern: \b(S120|S/120|S-120)\b
+          flags:
+          - IGNORECASE
+        S140:
+          pattern: \b(S140|S/140|S-140)\b
+          flags:
+          - IGNORECASE
+        S160:
+          pattern: \b(S160|S/160|S-160)\b
+          flags:
+          - IGNORECASE
+        S10:
+          pattern: \b(S10|S/10)\b
+          flags:
+          - IGNORECASE
+        S20:
+          pattern: \b(S20|S/20|S-20)\b
+          flags:
+          - IGNORECASE
+        S30:
+          pattern: \b(S30|S/30|S-30)\b
+          flags:
+          - IGNORECASE
+        STD:
+          pattern: STD
+          flags:
+          - IGNORECASE
+        S40S:
+          pattern: \b(S40S|S/40S|S-40S)\b
+          flags:
+          - IGNORECASE
+        S40:
+          pattern: \b(S40|S/40|S-40)\b
+          flags:
+          - IGNORECASE
+        S60S:
+          pattern: \b(S60S|S/60S|S-60S)\b
+          flags:
+          - IGNORECASE
+        S60:
+          pattern: \b(S60|S/60|S-60)\b
+          flags:
+          - IGNORECASE
+        XXS:
+          pattern: XXS
+          flags:
+          - IGNORECASE
+        XS:
+          pattern: (XH|XS)
+          flags:
+          - IGNORECASE
+        S80S:
+          pattern: \b(S80S|S/80S|S-80S)\b
+          flags:
+          - IGNORECASE
+        S80:
+          pattern: \b(S80|S/80|S-80|SCH 80)\b
+          flags:
+          - IGNORECASE
     UNI_DIM_SPEC:
       token_type: UNI_DIM_SPEC
       mappings:
-        "ASME B16.9": {pattern: \b(ASME B16.9|B16.9|ASTM A234|ASTM A403)\b, flags: [IGNORECASE]}
-        "ASME B16.9 S58": {pattern: (ASME B16.9 S58|ASME B16.9S58), flags: [IGNORECASE]}
-    
+        ASME B16.5:
+          pattern: \b(ASME B16.5|B16.5)\b
+          flags:
+          - IGNORECASE
+        ASME B16.9:
+          pattern: \b(ASME B16.9|B16.9|ASTM A234|ASTM A403)\b
+          flags:
+          - IGNORECASE
+        ASME B16.9 S58:
+          pattern: (ASME B16.9 S58|ASME B16.9S58)
+          flags:
+          - IGNORECASE
+        ASME B16.11:
+          pattern: \b(ASME\s*B16\.11|B16\.11)\b
+          flags:
+          - IGNORECASE
+        ASME B16.28:
+          pattern: \b(ASME\s*B16\.28|B16\.28)\b
+          flags:
+          - IGNORECASE
+        MSS SP-75:
+          pattern: \b(MSS\s*SP.?75)\b
+          flags:
+          - IGNORECASE
+        MSS SP-43:
+          pattern: \b(MSS\s*SP.?43)\b
+          flags:
+          - IGNORECASE
+        ASME B16.47A:
+          pattern: \b(ASME\s*B16\.47\s*A|B16\.47\s*A|B16\.47\s*Series\s*A)\b
+          flags:
+          - IGNORECASE
+        ASME B16.47B:
+          pattern: \b(ASME\s*B16\.47\s*B|B16\.47\s*B|B16\.47\s*Series\s*B)\b
+          flags:
+          - IGNORECASE
+        ASME B16.47:
+          pattern: \b(ASME\s*B16\.47|B16\.47)\b
+          flags:
+          - IGNORECASE
+        API 6A:
+          pattern: \b(API\s*6A)\b
+          flags:
+          - IGNORECASE
+        API 605:
+          pattern: \b(API\s*605)\b
+          flags:
+          - IGNORECASE
+        ASME B18.2.1:
+          pattern: \b(ASME\s*B18\.2\.1|B18\.2\.1)\b
+          flags:
+          - IGNORECASE
+        ASME B18.2.2:
+          pattern: \b(ASME\s*B18\.2\.2|B18\.2\.2)\b
+          flags:
+          - IGNORECASE
+        ASME B1.1:
+          pattern: \b(ASME\s*B1\.1|B1\.1)\b
+          flags:
+          - IGNORECASE
+        ISO 4014:
+          pattern: \b(ISO\s*4014)\b
+          flags:
+          - IGNORECASE
+        ISO 4032:
+          pattern: \b(ISO\s*4032)\b
+          flags:
+          - IGNORECASE
+        ASME B16.20:
+          pattern: \b(ASME\s*B16\.20|B16\.20)\b
+          flags:
+          - IGNORECASE
+        ASME B16.21:
+          pattern: \b(ASME\s*B16\.21|B16\.21)\b
+          flags:
+          - IGNORECASE
     UNI_MATERIAL:
       token_type: UNI_MATERIAL
       mappings:
         WPB:
           pattern: \b(ASTM\s*A234[\s\-]*WPB|A234[\s\-]*WPB|A234\s*Gr\.[\s\-]*WPB|WPB)\b
-          flags: [IGNORECASE]
-        16MO3: {pattern: 16MO3, flags: [IGNORECASE]}
-        WP11 CL1: {pattern: \b(WP11.*CL1|WP11.*CL1\.1|WP11.*Class 1|WP11.*Cl\.1)\b, flags: [IGNORECASE]}
-        WP11 CL2: {pattern: \b(WP11.*CL2|WP11.*CL2\.1|WP11.*Class 2|WP11.*Cl\.2)\b, flags: [IGNORECASE]}
-        WP11 CL3: {pattern: \b(WP11.*CL3|WP11.*CL3\.1|WP11.*Class 3|WP11.*Cl\.3)\b, flags: [IGNORECASE]}
-        WP11: {pattern: \b(WP11|WP11.*)\b, flags: [IGNORECASE]}
-        WP22 CL1: {pattern: \b(WP22.*CL1|WP22.*CL1\.1|WP22.*Class 1|WP22.*Cl\.1)\b, flags: [IGNORECASE]}
-        WP22 CL2: {pattern: \b(WP22.*CL2|WP22.*CL2\.1|WP22.*Class 2|WP22.*Cl\.2)\b, flags: [IGNORECASE]}
-        WP22 CL3: {pattern: \b(WP22.*CL3|WP22.*CL3\.1|WP22.*Class 3|WP22.*Cl\.3)\b, flags: [IGNORECASE]}
-        WP22: {pattern: \b(WP22|WP22.*)\b, flags: [IGNORECASE]}   
-        WP304/304L: {pattern: \b(304/304L|WP304/304L|WP304/304L-S)\b, flags: [IGNORECASE]}
-        WP304H: {pattern: \b(304H|WP304H|WP304H-S)\b, flags: [IGNORECASE]}
-        WP304L: {pattern: \b(304L|WP304L|WP304L-S)\b, flags: [IGNORECASE]}
-        WP304: {pattern: \b(304|WP304|WP304-S)\b, flags: [IGNORECASE]}
-        WP316/316L: {pattern: \b(316/316L|WP316/316L|WP316/316L-S)\b, flags: [IGNORECASE]}
-        WP316L: {pattern: \b(316L|WP316L|WP316L-S)\b, flags: [IGNORECASE]}
-        WP316: {pattern: \b(316|WP316|WP316-S)\b, flags: [IGNORECASE]}
-        WP321: {pattern: \b(321|WP321|WP321-S)\b, flags: [IGNORECASE]}
-        WP347H: {pattern: \b(347H|WP347H|WP347H-S)\b, flags: [IGNORECASE]} 
-        P235GH: {pattern: \b(P235GH)\b, flags: [IGNORECASE]}
-        S235: {pattern: \b(S235)\b, flags: [IGNORECASE]}
-        S265: {pattern: \b(S265)\b, flags: [IGNORECASE]}
-        S31803: {pattern: \b(S31803)\b, flags: [IGNORECASE]}
-        SGP: {pattern: \b(SGP)\b, flags: [IGNORECASE]}
-        ST35.8: {pattern: \b(ST35.8)\b, flags: [IGNORECASE]}
-        ST52.3: {pattern: \b(ST52.3)\b, flags: [IGNORECASE]}
-        WP5: {pattern: \b(WP5)\b, flags: [IGNORECASE]}
-        WP9 CL1: {pattern: \b(WP9 CL1|WP9 CL1.1|WP9 Class 1)\b, flags: [IGNORECASE]}
-        WP9: {pattern: \b(WP9)\b, flags: [IGNORECASE]}   
-        WPC: {pattern: \b(WPC)\b, flags: [IGNORECASE]}  
-        WPHC42: {pattern: \b(WPHC42)\b, flags: [IGNORECASE]}
-        WPHY52: {pattern: \b(WPHY52)\b, flags: [IGNORECASE]}
-        WPHY56: {pattern: \b(WPHY56)\b, flags: [IGNORECASE]}
-        WPHY60: {pattern: \b(WPHY60)\b, flags: [IGNORECASE]}
-        WPHY65: {pattern: \b(WPHY65)\b, flags: [IGNORECASE]}
-        WPL3: {pattern: \b(WPL3)\b, flags: [IGNORECASE]}
-        WPL6: {pattern: \b(WPL6|A420 WPL6)\b, flags: [IGNORECASE]}
-        X52: {pattern: \b(X52)\b, flags: [IGNORECASE]}
-        X65Q: {pattern: \b(X65Q)\b, flags: [IGNORECASE]}  
-    
+          flags:
+          - IGNORECASE
+        16MO3:
+          pattern: 16MO3
+          flags:
+          - IGNORECASE
+        WP11 CL1:
+          pattern: \b(WP11.*CL1|WP11.*CL1\.1|WP11.*Class 1|WP11.*Cl\.1)\b
+          flags:
+          - IGNORECASE
+        WP11 CL2:
+          pattern: \b(WP11.*CL2|WP11.*CL2\.1|WP11.*Class 2|WP11.*Cl\.2)\b
+          flags:
+          - IGNORECASE
+        WP11 CL3:
+          pattern: \b(WP11.*CL3|WP11.*CL3\.1|WP11.*Class 3|WP11.*Cl\.3)\b
+          flags:
+          - IGNORECASE
+        WP11:
+          pattern: \b(WP11|WP11.*)\b
+          flags:
+          - IGNORECASE
+        WP22 CL1:
+          pattern: \b(WP22.*CL1|WP22.*CL1\.1|WP22.*Class 1|WP22.*Cl\.1)\b
+          flags:
+          - IGNORECASE
+        WP22 CL2:
+          pattern: \b(WP22.*CL2|WP22.*CL2\.1|WP22.*Class 2|WP22.*Cl\.2)\b
+          flags:
+          - IGNORECASE
+        WP22 CL3:
+          pattern: \b(WP22.*CL3|WP22.*CL3\.1|WP22.*Class 3|WP22.*Cl\.3)\b
+          flags:
+          - IGNORECASE
+        WP22:
+          pattern: \b(WP22|WP22.*)\b
+          flags:
+          - IGNORECASE
+        WP304/304L:
+          pattern: \b(304/304L|WP304/304L|WP304/304L-S)\b
+          flags:
+          - IGNORECASE
+        WP304H:
+          pattern: \b(304H|WP304H|WP304H-S)\b
+          flags:
+          - IGNORECASE
+        WP304L:
+          pattern: \b(304L|WP304L|WP304L-S)\b
+          flags:
+          - IGNORECASE
+        WP304:
+          pattern: \b(304|WP304|WP304-S)\b
+          flags:
+          - IGNORECASE
+        WP316/316L:
+          pattern: \b(316/316L|WP316/316L|WP316/316L-S)\b
+          flags:
+          - IGNORECASE
+        WP316L:
+          pattern: \b(316L|WP316L|WP316L-S)\b
+          flags:
+          - IGNORECASE
+        WP316:
+          pattern: \b(316|WP316|WP316-S)\b
+          flags:
+          - IGNORECASE
+        WP321:
+          pattern: \b(321|WP321|WP321-S)\b
+          flags:
+          - IGNORECASE
+        WP347H:
+          pattern: \b(347H|WP347H|WP347H-S)\b
+          flags:
+          - IGNORECASE
+        P235GH:
+          pattern: \b(P235GH)\b
+          flags:
+          - IGNORECASE
+        S235:
+          pattern: \b(S235)\b
+          flags:
+          - IGNORECASE
+        S265:
+          pattern: \b(S265)\b
+          flags:
+          - IGNORECASE
+        S31803:
+          pattern: \b(S31803)\b
+          flags:
+          - IGNORECASE
+        SGP:
+          pattern: \b(SGP)\b
+          flags:
+          - IGNORECASE
+        ST35.8:
+          pattern: \b(ST35.8)\b
+          flags:
+          - IGNORECASE
+        ST52.3:
+          pattern: \b(ST52.3)\b
+          flags:
+          - IGNORECASE
+        WP5:
+          pattern: \b(WP5)\b
+          flags:
+          - IGNORECASE
+        WP9 CL1:
+          pattern: \b(WP9 CL1|WP9 CL1.1|WP9 Class 1)\b
+          flags:
+          - IGNORECASE
+        WP9:
+          pattern: \b(WP9)\b
+          flags:
+          - IGNORECASE
+        WPC:
+          pattern: \b(WPC)\b
+          flags:
+          - IGNORECASE
+        WPHC42:
+          pattern: \b(WPHC42)\b
+          flags:
+          - IGNORECASE
+        WPHY52:
+          pattern: \b(WPHY52)\b
+          flags:
+          - IGNORECASE
+        WPHY56:
+          pattern: \b(WPHY56)\b
+          flags:
+          - IGNORECASE
+        WPHY60:
+          pattern: \b(WPHY60)\b
+          flags:
+          - IGNORECASE
+        WPHY65:
+          pattern: \b(WPHY65)\b
+          flags:
+          - IGNORECASE
+        WPL3:
+          pattern: \b(WPL3)\b
+          flags:
+          - IGNORECASE
+        WPL6:
+          pattern: \b(WPL6|A420 WPL6)\b
+          flags:
+          - IGNORECASE
+        X52:
+          pattern: \b(X52)\b
+          flags:
+          - IGNORECASE
+        X65Q:
+          pattern: \b(X65Q)\b
+          flags:
+          - IGNORECASE
+        A105:
+          pattern: \b(A105|ASTM\s*A105)\b
+          flags:
+          - IGNORECASE
+        F304:
+          pattern: \b(F304|A182\s*F304)\b
+          flags:
+          - IGNORECASE
+        F304L:
+          pattern: \b(F304L|A182\s*F304L)\b
+          flags:
+          - IGNORECASE
+        F316:
+          pattern: \b(F316|A182\s*F316)\b
+          flags:
+          - IGNORECASE
+        F316L:
+          pattern: \b(F316L|A182\s*F316L)\b
+          flags:
+          - IGNORECASE
+        F321:
+          pattern: \b(F321|A182\s*F321)\b
+          flags:
+          - IGNORECASE
+        F347:
+          pattern: \b(F347|A182\s*F347)\b
+          flags:
+          - IGNORECASE
+        F11 CL2:
+          pattern: \b(F11\s*CL2?|F11\s*Class\s*2|A182\s*F11)\b
+          flags:
+          - IGNORECASE
+        F22 CL3:
+          pattern: \b(F22\s*CL3?|F22\s*Class\s*3|A182\s*F22)\b
+          flags:
+          - IGNORECASE
+        F5:
+          pattern: \b(F5|A182\s*F5)\b
+          flags:
+          - IGNORECASE
+        F9:
+          pattern: \b(F9|A182\s*F9)\b
+          flags:
+          - IGNORECASE
+        F91:
+          pattern: \b(F91|A182\s*F91)\b
+          flags:
+          - IGNORECASE
+        LF2:
+          pattern: \b(LF2|A350\s*LF2)\b
+          flags:
+          - IGNORECASE
+        LF3:
+          pattern: \b(LF3|A350\s*LF3)\b
+          flags:
+          - IGNORECASE
+        B7:
+          pattern: \b(B7|A193\s*B7|Gr\.?\s*B7)\b
+          flags:
+          - IGNORECASE
+        B7M:
+          pattern: \b(B7M|A193\s*B7M)\b
+          flags:
+          - IGNORECASE
+        B8:
+          pattern: \b(B8|A193\s*B8)\b
+          flags:
+          - IGNORECASE
+        B8M:
+          pattern: \b(B8M|A193\s*B8M)\b
+          flags:
+          - IGNORECASE
+        L7:
+          pattern: \b(L7|A320\s*L7)\b
+          flags:
+          - IGNORECASE
+        L7M:
+          pattern: \b(L7M|A320\s*L7M)\b
+          flags:
+          - IGNORECASE
+        2H:
+          pattern: \b(2H|A194\s*2H|Gr\.?\s*2H)\b
+          flags:
+          - IGNORECASE
+        2HM:
+          pattern: \b(2HM|A194\s*2HM)\b
+          flags:
+          - IGNORECASE
+        GR8:
+          pattern: \b(Gr\.?\s*8|A194\s*Gr\.?\s*8)\b
+          flags:
+          - IGNORECASE
+        GR8M:
+          pattern: \b(Gr\.?\s*8M|A194\s*Gr\.?\s*8M)\b
+          flags:
+          - IGNORECASE
+        SS304:
+          pattern: \b(SS304|304\s*SS|304\s*Stainless)\b
+          flags:
+          - IGNORECASE
+        SS316:
+          pattern: \b(SS316|316\s*SS|316\s*Stainless)\b
+          flags:
+          - IGNORECASE
+        GRAPHITE:
+          pattern: \b(GRAPHITE|FLEXIBLE GRAPHITE|柔性石墨)\b
+          flags:
+          - IGNORECASE
+        PTFE:
+          pattern: \b(PTFE|TEFLON|聚四氟乙烯)\b
+          flags:
+          - IGNORECASE
+        NEOPRENE:
+          pattern: \b(NEOPRENE|氯丁橡胶)\b
+          flags:
+          - IGNORECASE
+        EPDM:
+          pattern: \b(EPDM)\b
+          flags:
+          - IGNORECASE
+        KLINGERSIL:
+          pattern: \b(KLINGERSIL|KLINGER)\b
+          flags:
+          - IGNORECASE
     UNI_CONSTRUCTION:
       token_type: UNI_CONSTRUCTION
       mappings:
-        S: {pattern: \b(S|SMLS|SEAMLESS|无缝式)\b, flags: [IGNORECASE]}
-        W: {pattern: \b(W|WELDED|焊接式)\b, flags: [IGNORECASE]}
-        F: {pattern: \b(F|FORGED|锻造式)\b, flags: [IGNORECASE]}
-        C: {pattern: \b(C|CAST|铸造式)\b, flags: [IGNORECASE]}
-        M: {pattern: \b(M|MACHINED|机加工式)\b, flags: [IGNORECASE]}
-        AS: {pattern: \b(AS|ASSEMBLED|组装式)\b, flags: [IGNORECASE]}
-    
+        S:
+          pattern: \b(S|SMLS|SEAMLESS|无缝式)\b
+          flags:
+          - IGNORECASE
+        W:
+          pattern: \b(W|WELDED|焊接式)\b
+          flags:
+          - IGNORECASE
+        F:
+          pattern: \b(F|FORGED|锻造式)\b
+          flags:
+          - IGNORECASE
+        C:
+          pattern: \b(C|CAST|铸造式)\b
+          flags:
+          - IGNORECASE
+        M:
+          pattern: \b(M|MACHINED|机加工式)\b
+          flags:
+          - IGNORECASE
+        AS:
+          pattern: \b(AS|ASSEMBLED|组装式)\b
+          flags:
+          - IGNORECASE
     UNI_END_PREPARATION:
       token_type: UNI_END_PREPARATION
       mappings:
-        BW: {pattern: (BW|BE|Beveled End|BUTT WELD|对焊), flags: [IGNORECASE]}
-        SW: {pattern: (SW|SOCKET WELD|承插焊), flags: [IGNORECASE]}
-        THD: {pattern: (THD|THREADED|NPT|螺纹端), flags: [IGNORECASE]}
-        PE: {pattern: (PE|PLAIN END|平端), flags: [IGNORECASE]}
-        BE: {pattern: (BE|BEVELED END|坡口端), flags: [IGNORECASE]}
-        FL: {pattern: (FL|FLANGE|法兰端), flags: [IGNORECASE]}
-        GRO: {pattern: (GRO|GROOVED|沟槽端), flags: [IGNORECASE]}
-        LAP: {pattern: (LAP|LAP JOINT|松套法兰端), flags: [IGNORECASE]}
-
-  # Lexer全局配置
+        BW:
+          pattern: (BW|Beveled End|BUTT WELD|对焊)
+          flags:
+          - IGNORECASE
+        SW:
+          pattern: (SW|SOCKET WELD|承插焊)
+          flags:
+          - IGNORECASE
+        THD:
+          pattern: (THD|THREADED|NPT|螺纹端)
+          flags:
+          - IGNORECASE
+        PE:
+          pattern: (PE|PLAIN END|平端)
+          flags:
+          - IGNORECASE
+        BE:
+          pattern: (BE|BEVELED END|坡口端)
+          flags:
+          - IGNORECASE
+        FL:
+          pattern: (FL|FLANGE END|法兰端)
+          flags:
+          - IGNORECASE
+        GRO:
+          pattern: (GRO|GROOVED|沟槽端)
+          flags:
+          - IGNORECASE
+        LAP:
+          pattern: (LAP|LAP JOINT|松套法兰端)
+          flags:
+          - IGNORECASE
+    UNI_PRESSURE_CLASS:
+      token_type: UNI_PRESSURE_CLASS
+      mappings:
+        CL150:
+          pattern: \b(CL\.?\s*150|CLASS\s*150|#150|150LB)\b
+          flags:
+          - IGNORECASE
+        CL300:
+          pattern: \b(CL\.?\s*300|CLASS\s*300|#300|300LB)\b
+          flags:
+          - IGNORECASE
+        CL400:
+          pattern: \b(CL\.?\s*400|CLASS\s*400|#400|400LB)\b
+          flags:
+          - IGNORECASE
+        CL600:
+          pattern: \b(CL\.?\s*600|CLASS\s*600|#600|600LB)\b
+          flags:
+          - IGNORECASE
+        CL900:
+          pattern: \b(CL\.?\s*900|CLASS\s*900|#900|900LB)\b
+          flags:
+          - IGNORECASE
+        CL1500:
+          pattern: \b(CL\.?\s*1500|CLASS\s*1500|#1500|1500LB)\b
+          flags:
+          - IGNORECASE
+        CL2500:
+          pattern: \b(CL\.?\s*2500|CLASS\s*2500|#2500|2500LB)\b
+          flags:
+          - IGNORECASE
+        PN6:
+          pattern: \b(PN\s*6)\b
+          flags:
+          - IGNORECASE
+        PN10:
+          pattern: \b(PN\s*10)\b
+          flags:
+          - IGNORECASE
+        PN16:
+          pattern: \b(PN\s*16)\b
+          flags:
+          - IGNORECASE
+        PN25:
+          pattern: \b(PN\s*25)\b
+          flags:
+          - IGNORECASE
+        PN40:
+          pattern: \b(PN\s*40)\b
+          flags:
+          - IGNORECASE
+        PN64:
+          pattern: \b(PN\s*64)\b
+          flags:
+          - IGNORECASE
+        PN100:
+          pattern: \b(PN\s*100)\b
+          flags:
+          - IGNORECASE
+    UNI_FACING:
+      token_type: UNI_FACING
+      mappings:
+        RF:
+          pattern: \b(RF|RAISED FACE|突面|凸面)\b
+          flags:
+          - IGNORECASE
+        FF:
+          pattern: \b(FF|FLAT FACE|全平面|平面)\b
+          flags:
+          - IGNORECASE
+        RTJ:
+          pattern: \b(RTJ|RING JOINT|RING TYPE JOINT|环形连接面)\b
+          flags:
+          - IGNORECASE
+        TG:
+          pattern: \b(TG|TONGUE.?AND.?GROOVE|榫槽面)\b
+          flags:
+          - IGNORECASE
+        MF:
+          pattern: \b(MF|MALE.?FEMALE|凹凸面)\b
+          flags:
+          - IGNORECASE
+        LG:
+          pattern: \b(LG|LARGE.?TONGUE)\b
+          flags:
+          - IGNORECASE
+    UNI_BOLT_GRADE:
+      token_type: UNI_BOLT_GRADE
+      mappings:
+        A193 B7:
+          pattern: \b(A193\s*B7|ASTM\s*A193\s*GR\.?\s*B7)\b
+          flags:
+          - IGNORECASE
+        A193 B7M:
+          pattern: \b(A193\s*B7M)\b
+          flags:
+          - IGNORECASE
+        A193 B8:
+          pattern: \b(A193\s*B8)\b
+          flags:
+          - IGNORECASE
+        A193 B8M:
+          pattern: \b(A193\s*B8M)\b
+          flags:
+          - IGNORECASE
+        A320 L7:
+          pattern: \b(A320\s*L7)\b
+          flags:
+          - IGNORECASE
+        A320 L7M:
+          pattern: \b(A320\s*L7M)\b
+          flags:
+          - IGNORECASE
+        A307 B:
+          pattern: \b(A307\s*B)\b
+          flags:
+          - IGNORECASE
+        '8.8':
+          pattern: \b(8\.8)\b
+          flags:
+          - IGNORECASE
+        '10.9':
+          pattern: \b(10\.9)\b
+          flags:
+          - IGNORECASE
+    UNI_THREAD_TYPE:
+      token_type: UNI_THREAD_TYPE
+      mappings:
+        UNC:
+          pattern: \b(UNC|UNIFIED COARSE)\b
+          flags:
+          - IGNORECASE
+        UNF:
+          pattern: \b(UNF|UNIFIED FINE)\b
+          flags:
+          - IGNORECASE
+        NPT:
+          pattern: \b(NPT)\b
+          flags:
+          - IGNORECASE
+        NPTF:
+          pattern: \b(NPTF)\b
+          flags:
+          - IGNORECASE
+        M:
+          pattern: \b(METRIC|公制螺纹)\b
+          flags:
+          - IGNORECASE
+    UNI_GASKET_TYPE:
+      token_type: UNI_GASKET_TYPE
+      mappings:
+        SWG:
+          pattern: \b(SWG|SPIRAL.?WOUND|缠绕垫|金属缠绕垫)\b
+          flags:
+          - IGNORECASE
+        RTJ:
+          pattern: \b(RTJ|RING JOINT|RING.?TYPE|金属环垫)\b
+          flags:
+          - IGNORECASE
+        FF:
+          pattern: \b(FF|FULL.?FACE|全平面垫)\b
+          flags:
+          - IGNORECASE
+        CAM:
+          pattern: \b(CAM|CAMPROFILE|齿形垫)\b
+          flags:
+          - IGNORECASE
+        KAMMPROFILE:
+          pattern: \b(KAMMPROFILE)\b
+          flags:
+          - IGNORECASE
+        SHEET:
+          pattern: \b(SHEET|FLAT SHEET|板式垫片)\b
+          flags:
+          - IGNORECASE
+        ENVELOPE:
+          pattern: \b(ENVELOPE|JACKETED|包覆垫)\b
+          flags:
+          - IGNORECASE
   config:
-    case_insensitive: true  # 全局默认忽略大小写
-    whitespace_allowed: true  # 允许匹配包含空格的文本
-    multi_line: false  # 单行匹配模式
-    comment_prefix: '#'  # 保留原文件的注释前缀
+    case_insensitive: true
+    whitespace_allowed: true
+    multi_line: false
+    comment_prefix: '#'

@@ -52,6 +52,7 @@ function compileEnumPatterns(enumConf) {
       bucket.sort((a, b) => (orderMap[a[0]] ?? Infinity) - (orderMap[b[0]] ?? Infinity));
     }
     compiled[enumName] = bucket;
+    compiled[`${enumName}_KEYS`] = new Set(bucket.map(([v]) => v));
   }
   return compiled;
 }
@@ -110,11 +111,13 @@ function detectHeaderRow(rawRows, rulesConf) {
 function inferColumnSemantics(columns, compiledColMaps) {
   const mapping = {};
   for (const col of columns) {
-    const colStr = col == null ? '' : String(col);
+    const raw    = col == null ? '' : String(col);
+    // 多行表头（含 \r\n）归一化为单行再匹配
+    const colStr = raw.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
     for (const [pat, target] of compiledColMaps) {
       // Python 用 re.match 从头匹配，pattern 自带 ^ 和 $ 锚点
       if (new RegExp(pat.source, pat.flags).test(colStr)) {
-        mapping[colStr] = target;
+        mapping[raw] = target;   // key 保留原始列名（与 rowObj 的 key 一致）
         break;
       }
     }
@@ -279,6 +282,9 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
     UNI_OD1: '', UNI_OD2: '', UNI_OD3: '',
     UNI_WT1: '', UNI_WT2: '', UNI_WT3: '',
     UNI_DIM_SPEC: '', UNI_MATERIAL: '', UNI_CONSTRUCTION: '', UNI_END_PREPARATION: '',
+    UNI_CATEGORY: '', UNI_PRESSURE_CLASS: '', UNI_FACING: '',
+    UNI_BOLT_GRADE: '', UNI_BOLT_LENGTH: '', UNI_THREAD_TYPE: '',
+    UNI_GASKET_TYPE: '', UNI_GASKET_THK: '',
     QTR_LINE: '', QTR_QTY: '', QTR_PRICE: '',
   };
 
@@ -319,6 +325,14 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
   uni.UNI_END_PREPARATION = me('UNI_END_PREPARATION');
   const dimSpec           = me('UNI_DIM_SPEC');
   if (dimSpec) uni.UNI_DIM_SPEC = dimSpec;
+
+  // 新增品类相关枚举提取
+  uni.UNI_CATEGORY       = me('UNI_CATEGORY');
+  uni.UNI_PRESSURE_CLASS = me('UNI_PRESSURE_CLASS');
+  uni.UNI_FACING         = me('UNI_FACING');
+  uni.UNI_BOLT_GRADE     = me('UNI_BOLT_GRADE');
+  uni.UNI_THREAD_TYPE    = me('UNI_THREAD_TYPE');
+  uni.UNI_GASKET_TYPE    = me('UNI_GASKET_TYPE');
 
   // 特例：描述含 "RED TEE" → TYPE=TEE，RED 归入 MISC（Python 原有逻辑）
   if (upperDesc.includes('RED TEE')) {
@@ -466,6 +480,17 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
     }
   }
 
+  // ── 从专用列读取新增字段（列值覆盖枚举提取，适用于有独立列的结构化文件） ──
+  const EXTRA_COL_FIELDS = new Set([
+    'UNI_PRESSURE_CLASS','UNI_FACING','UNI_BOLT_GRADE',
+    'UNI_BOLT_LENGTH','UNI_THREAD_TYPE','UNI_GASKET_TYPE','UNI_GASKET_THK',
+  ]);
+  for (const [colName, internal] of Object.entries(colSemantics)) {
+    if (!EXTRA_COL_FIELDS.has(internal)) continue;
+    const v = String(rowObj[colName] ?? '').trim();
+    if (v) uni[internal] = v;
+  }
+
   return uni;
 }
 
@@ -481,6 +506,102 @@ function buildOutputRow(uni, uniToCodeMap) {
     row[cnName] = v !== '' ? String(v) : '';
   }
   return row;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   分类检测 + 置信度评分
+   ═══════════════════════════════════════════════════════════════ */
+
+// UNI_TYPE → 品类路由表
+const FITTING_TYPE_SET = new Set(['CAP','ELB','RED','TEE','STE','XOS']);
+const FLANGE_TYPE_SET  = new Set(['WN','SO','BL','SW_FL','THD_FL','LJ','OR']);
+const BOLT_TYPE_SET    = new Set(['STUD','HEX']);
+const GASKET_TYPE_SET  = new Set(['SW_GSK','RF_GSK','FF_GSK','NRS']);
+
+// UNI_TYPE 枚举和 UNI_CATEGORY 均未命中时的关键字兜底（OLE/PLUG 等特殊件）
+const FALLBACK_KEYWORDS = [
+  [/WELDOLET|SOCKOLET|THREDOLET|\bOLET\b/i, 'FITTING', 'OLE'],
+  [/\bPLUG\b|BOUCHON/i,                      'FITTING', 'PLUG'],
+];
+
+/**
+ * 品类路由：UNI_TYPE → UNI_CATEGORY 枚举 → 关键字兜底
+ * @param {string} descText - 完整描述文本
+ * @param {object} uniRow   - 已提取的 UNI 字段对象
+ */
+function detectCategory(descText, uniRow) {
+  const t = uniRow.UNI_TYPE;
+  if (FITTING_TYPE_SET.has(t)) return { category: 'FITTING', catType: t };
+  if (FLANGE_TYPE_SET.has(t))  return { category: 'FLANGE',  catType: t };
+  if (BOLT_TYPE_SET.has(t))    return { category: 'BOLT',    catType: t };
+  if (GASKET_TYPE_SET.has(t))  return { category: 'GASKET',  catType: t };
+  // UNI_CATEGORY 来自描述文本的枚举匹配（FLANGE/GASKET/BOLT 等关键字）
+  const cat = uniRow.UNI_CATEGORY;
+  if (cat) return { category: cat, catType: t || null };
+  // 兜底：OLE / PLUG 等未进入 UNI_TYPE 枚举的特殊管件
+  const upper = (descText || '').toUpperCase();
+  for (const [rx, c, typ] of FALLBACK_KEYWORDS) {
+    if (rx.test(upper)) return { category: c, catType: typ };
+  }
+  return { category: null, catType: null };
+}
+
+/**
+ * 按品类评分：FITTING / FLANGE / BOLT / GASKET 各用不同字段判断置信度
+ */
+function scoreRow(uni, category, catType, enumPatterns) {
+  if (!category) return { conf: 'low', reason: '无法确定品类(描述未命中关键字)' };
+
+  const reasons = [];
+  const od1      = uni.UNI_OD1;
+  const material = uni.UNI_MATERIAL;
+  const od_ok    = !!od1      && (enumPatterns['UNI_OD_KEYS']?.has(od1) ?? false);
+  const mat_ok   = !!material && (enumPatterns['UNI_MATERIAL_KEYS']?.has(material) ?? false);
+
+  if (!od_ok && od1) reasons.push(`OD "${od1}" 非标准值`);
+  if (!mat_ok)       reasons.push(`材质 "${material || '(空)'}" 未命中词典`);
+
+  switch (category) {
+    case 'FITTING': {
+      const typeKeys = enumPatterns['UNI_TYPE_KEYS'];
+      const type_ok  = typeKeys?.has(catType) || catType === 'OLE' || catType === 'PLUG';
+      if (!type_ok && catType) reasons.push(`类型 "${catType}" 未在管件枚举中`);
+      if (od_ok && mat_ok && type_ok)           return { conf: 'high', reason: '' };
+      if (od_ok && (mat_ok || type_ok))         return { conf: 'mid',  reason: reasons.join('；') };
+      return { conf: 'low', reason: reasons.join('；') || '多个字段未命中' };
+    }
+    case 'FLANGE': {
+      const pressure  = uni.UNI_PRESSURE_CLASS;
+      const facing    = uni.UNI_FACING;
+      const press_ok  = !!pressure && (enumPatterns['UNI_PRESSURE_CLASS_KEYS']?.has(pressure) ?? false);
+      const facing_ok = !!facing;
+      if (!pressure)      reasons.push('缺压力等级');
+      else if (!press_ok) reasons.push(`压力等级 "${pressure}" 待确认`);
+      if (!facing)        reasons.push('缺密封面形式');
+      if (od_ok && mat_ok && press_ok && facing_ok) return { conf: 'high', reason: '' };
+      if (od_ok && mat_ok)                          return { conf: 'mid',  reason: reasons.join('；') };
+      return { conf: 'low', reason: reasons.join('；') || '多个字段未命中' };
+    }
+    case 'BOLT': {
+      const grade_ok = !!uni.UNI_BOLT_GRADE;
+      if (!grade_ok) reasons.push('缺螺栓等级');
+      if (grade_ok && mat_ok) return { conf: 'high', reason: '' };
+      if (grade_ok || mat_ok) return { conf: 'mid',  reason: reasons.join('；') };
+      return { conf: 'low', reason: reasons.join('；') || '螺栓等级/材质未命中' };
+    }
+    case 'GASKET':
+    case 'NUT':
+    case 'INSULATION_KIT': {
+      const pressure = uni.UNI_PRESSURE_CLASS;
+      if (!uni.UNI_GASKET_TYPE && category === 'GASKET') reasons.push('缺垫片类型');
+      if (!pressure) reasons.push('缺压力等级');
+      reasons.unshift(`${category} 品类词典待扩展`);
+      if (od_ok && mat_ok) return { conf: 'mid', reason: reasons.join('；') };
+      return { conf: 'low', reason: reasons.join('；') };
+    }
+    default:
+      return { conf: 'low', reason: `未知品类 "${category}"` };
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -582,14 +703,58 @@ function parseExcel(filePath) {
       if (!uniRow[k]) uniRow[k] = v;
     }
 
+    const { category, catType } = detectCategory(descText, uniRow);
+    const { conf, reason }      = scoreRow(uniRow, category, catType, enumPatterns);
+
+    uniRow._category = category;
+    uniRow._catType  = catType;
+    uniRow._conf     = conf;
+    uniRow._reason   = reason;
+    uniRow._srcRow   = absIdx + 1;
+
     parsedRows.push(uniRow);
-    preprocessRows.push({ index: absIdx, type: 'child', descText, uni: uniRow });
+    preprocessRows.push({
+      index: absIdx, type: 'child', descText, uni: uniRow,
+      conf, reason, category,
+    });
   });
 
   // 构建输出行
   const outputRows = parsedRows.map(uni => buildOutputRow(uni, uniToCodeMap));
 
-  return { rawRows, headerRow: headerRowIdx, headers, colSemantics, preprocessRows, outputRows };
+  const enrichedRows = parsedRows.map(uni => ({
+    srcRow:       uni._srcRow,
+    item:         uni.QTR_LINE,
+    category:     uni._category,
+    catType:      uni._catType,
+    qty:          uni.QTR_QTY,
+    price:        uni.QTR_PRICE,
+    type:         uni.UNI_TYPE,
+    angle:        uni.UNI_ANGLE,
+    radius:       uni.UNI_RADIUS,
+    misc:         uni.UNI_MISC,
+    od1:          uni.UNI_OD1,
+    od2:          uni.UNI_OD2,
+    od3:          uni.UNI_OD3,
+    wt:           uni.UNI_WT1,
+    wt2:          uni.UNI_WT2,
+    wt3:          uni.UNI_WT3,
+    dimSpec:      uni.UNI_DIM_SPEC,
+    material:     uni.UNI_MATERIAL,
+    construction: uni.UNI_CONSTRUCTION,
+    ends:         uni.UNI_END_PREPARATION,
+    pressure:     uni.UNI_PRESSURE_CLASS,
+    facing:       uni.UNI_FACING,
+    boltGrade:    uni.UNI_BOLT_GRADE,
+    boltLength:   uni.UNI_BOLT_LENGTH,
+    threadType:   uni.UNI_THREAD_TYPE,
+    gasketType:   uni.UNI_GASKET_TYPE,
+    gasketThk:    uni.UNI_GASKET_THK,
+    conf:         uni._conf,
+    reason:       uni._reason,
+  }));
+
+  return { rawRows, headerRow: headerRowIdx, headers, colSemantics, preprocessRows, outputRows, enrichedRows };
 }
 
 module.exports = { parseExcel };

@@ -17,6 +17,8 @@
       <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
     </label>
     <span class="file-badge" id="file-name"></span>
+    <button class="btn btn-local" id="local-btn">📂 本地文件</button>
+    <div class="local-dropdown" id="local-dropdown" hidden></div>
   </div>
   <div class="toolbar-right">
     <button class="btn btn-export" id="export-btn" disabled>⬇ 导出 Excel</button>
@@ -59,6 +61,7 @@
   <div class="right-panel">
     <div class="panel-bar">
       <span>✅ 处理结果</span>
+      <span class="conf-summary" id="conf-summary"></span>
       <span class="row-count" id="row-count"></span>
     </div>
     <div class="table-wrap" id="result-wrap">

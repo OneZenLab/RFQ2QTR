@@ -20,6 +20,47 @@ app.get('/xlsx.js', (_req, res) => {
   res.sendFile(path.join(__dirname, 'node_modules/xlsx/dist/xlsx.full.min.js'));
 });
 
+// GET /api/local-files — 列出 QTR/ 目录中的 xlsx 文件
+app.get('/api/local-files', (_req, res) => {
+  const dir = path.join(__dirname, 'QTR');
+  try {
+    const files = fs.readdirSync(dir)
+      .filter(f => /\.xlsx$/i.test(f) && !f.startsWith('~$'))
+      .map(f => {
+        const st = fs.statSync(path.join(dir, f));
+        return { name: f, size: st.size, mtime: st.mtime };
+      });
+    res.json(files);
+  } catch (e) {
+    res.status(500).json({ error: `读取目录失败：${e.message}` });
+  }
+});
+
+// POST /api/parse-local — 直接解析 QTR/ 目录中的本地文件
+app.post('/api/parse-local', (req, res) => {
+  const { filename } = req.body;
+  if (!filename) return res.status(400).json({ error: '缺少 filename 参数' });
+
+  // 路径越界检查
+  const fullPath = path.resolve(path.join(__dirname, 'QTR', filename));
+  if (!fullPath.startsWith(path.resolve(path.join(__dirname, 'QTR')))) {
+    return res.status(400).json({ error: '非法文件路径' });
+  }
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: `文件不存在：${filename}` });
+  }
+
+  try {
+    const result = parseExcel(fullPath);
+    console.log(`\n=== 本地文件解析：${filename} ===`);
+    console.log('输出行数:', result.outputRows.length);
+    res.json(result);
+  } catch (e) {
+    console.error('解析异常:', e);
+    res.status(500).json({ error: `解析失败：${e.message}` });
+  }
+});
+
 // POST /api/parse — 上传 Excel 并解析第1张表
 app.post('/api/parse', upload.single('file'), (req, res) => {
   if (!req.file) {
