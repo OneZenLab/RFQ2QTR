@@ -21,6 +21,7 @@ lexer:
       - 序号
       - 数量
       - 订单价格
+      - 物料描述
       material_related: true
     column_map:
       token_type: COLUMN_MAPPING
@@ -187,27 +188,31 @@ lexer:
       token_type: UNI_TYPE
       mappings:
         CAP:
-          pattern: \b(CAP|封头|管帽)\b
+          pattern: (?:\b(?:CAP)\b|封头|管帽)
           flags:
           - IGNORECASE
         ELB:
-          pattern: \b(BEND|ELB|ELBOWS?|ELL|弯头|弯管)\b
+          pattern: (?:\b(?:BEND|ELB|ELBOWS?|ELL)\b|弯头|弯管)
           flags:
           - IGNORECASE
         RED:
-          pattern: \b(RED|REDUCER|CON|ECC|偏心|同心|大小头)\b
+          pattern: (?:\b(?:RED|REDUCER|CON|ECC)\b|偏心|同心|大小头)
           flags:
           - IGNORECASE
         TEE:
-          pattern: \b(TEE|TEE STRAIGHT|T|三通)\b
+          pattern: (?:\b(?:TEE|TEE STRAIGHT|T)\b|三通)
           flags:
           - IGNORECASE
         STE:
-          pattern: \b(STE|STRAIGHT|直管|直通)\b
+          pattern: (?:\b(?:STE|STRAIGHT)\b|直管|直通)
           flags:
           - IGNORECASE
         XOS:
-          pattern: \b(XOS|CROSS|四通|十字通)\b
+          pattern: (?:\b(?:XOS|CROSS)\b|四通|十字通)
+          flags:
+          - IGNORECASE
+        COUP:
+          pattern: (?:\b(?:COUPLING|COUP|COUPLER)\b|管箍)
           flags:
           - IGNORECASE
         WN:
@@ -292,11 +297,11 @@ lexer:
       token_type: UNI_MISC
       mappings:
         CON:
-          pattern: \b(CON|CONCENTRIC)\b
+          pattern: (?:\b(?:CON|CONCENTRIC)\b|同心)
           flags:
           - IGNORECASE
         ECC:
-          pattern: \b(ECC|ECCENTRIC|偏心|偏心异径)\b
+          pattern: (?:\b(?:ECC|ECCENTRIC)\b|偏心|偏心异径)
           flags:
           - IGNORECASE
         EQL:
@@ -478,7 +483,7 @@ lexer:
           flags:
           - IGNORECASE
         S160:
-          pattern: \b(S160|S/160|S-160)\b
+          pattern: \b(S160|S/160|S-160|SCH160|SCH\s*160)\b
           flags:
           - IGNORECASE
         S10:
@@ -498,11 +503,11 @@ lexer:
           flags:
           - IGNORECASE
         S40S:
-          pattern: \b(S40S|S/40S|S-40S)\b
+          pattern: \b(S40S|S/40S|S-40S|SCH40S)\b
           flags:
           - IGNORECASE
         S40:
-          pattern: \b(S40|S/40|S-40)\b
+          pattern: \b(S40|S/40|S-40|SCH40)\b
           flags:
           - IGNORECASE
         S60S:
@@ -522,11 +527,11 @@ lexer:
           flags:
           - IGNORECASE
         S80S:
-          pattern: \b(S80S|S/80S|S-80S)\b
+          pattern: \b(S80S|S/80S|S-80S|SCH80S)\b
           flags:
           - IGNORECASE
         S80:
-          pattern: \b(S80|S/80|S-80|SCH 80)\b
+          pattern: \b(S80|S/80|S-80|SCH 80|SCH80)\b
           flags:
           - IGNORECASE
     UNI_DIM_SPEC:
@@ -895,7 +900,7 @@ lexer:
       token_type: UNI_CONSTRUCTION
       mappings:
         S:
-          pattern: \b(S|SMLS|SEAMLESS|无缝式)\b
+          pattern: (?:\b(?:S|SMLS|SEAMLESS)\b|无缝)
           flags:
           - IGNORECASE
         W:
@@ -982,6 +987,10 @@ lexer:
           - IGNORECASE
         CL2500:
           pattern: \b(CL\.?\s*2500|CLASS\s*2500|#2500|2500LB)\b
+          flags:
+          - IGNORECASE
+        CL3000:
+          pattern: \b(CL\.?\s*3000|CLASS\s*3000|#3000|3000LB)\b
           flags:
           - IGNORECASE
         PN6:

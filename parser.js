@@ -150,6 +150,9 @@ function isParentRow(rowObj, colSemantics, enumPatterns) {
     else                          descCols.push(col);
   }
 
+  // 没有数量列也没有价格列 → 无法区分父/子行结构，全部视为子行
+  if (!qtyCols.length && !priceCols.length) return false;
+
   // 取描述文本（优先 Item 列，与 Python 一致）
   let descText = '';
   if ('Item' in rowObj) {
@@ -513,7 +516,7 @@ function buildOutputRow(uni, uniToCodeMap) {
    ═══════════════════════════════════════════════════════════════ */
 
 // UNI_TYPE → 品类路由表
-const FITTING_TYPE_SET = new Set(['CAP','ELB','RED','TEE','STE','XOS']);
+const FITTING_TYPE_SET = new Set(['CAP','ELB','RED','TEE','STE','XOS','COUP']);
 const FLANGE_TYPE_SET  = new Set(['WN','SO','BL','SW_FL','THD_FL','LJ','OR']);
 const BOLT_TYPE_SET    = new Set(['STUD','HEX']);
 const GASKET_TYPE_SET  = new Set(['SW_GSK','RF_GSK','FF_GSK','NRS']);
