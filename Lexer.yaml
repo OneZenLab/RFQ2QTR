@@ -467,19 +467,19 @@ lexer:
       token_type: UNI_WT
       mappings:
         S10S:
-          pattern: \b(S10S|S/10S|S-10S)\b
+          pattern: \b(S10S|S/10S|S-10S|SCH\s*10S)\b
           flags:
           - IGNORECASE
         S100:
-          pattern: \b(S100|S/100|S-100)\b
+          pattern: \b(S100|S/100|S-100|SCH\s*100)\b
           flags:
           - IGNORECASE
         S120:
-          pattern: \b(S120|S/120|S-120)\b
+          pattern: \b(S120|S/120|S-120|SCH\s*120)\b
           flags:
           - IGNORECASE
         S140:
-          pattern: \b(S140|S/140|S-140)\b
+          pattern: \b(S140|S/140|S-140|SCH\s*140)\b
           flags:
           - IGNORECASE
         S160:
@@ -487,15 +487,15 @@ lexer:
           flags:
           - IGNORECASE
         S10:
-          pattern: \b(S10|S/10)\b
+          pattern: \b(S10|S/10|SCH\s*10)\b
           flags:
           - IGNORECASE
         S20:
-          pattern: \b(S20|S/20|S-20)\b
+          pattern: \b(S20|S/20|S-20|SCH\s*20)\b
           flags:
           - IGNORECASE
         S30:
-          pattern: \b(S30|S/30|S-30)\b
+          pattern: \b(S30|S/30|S-30|SCH\s*30)\b
           flags:
           - IGNORECASE
         STD:
@@ -511,11 +511,11 @@ lexer:
           flags:
           - IGNORECASE
         S60S:
-          pattern: \b(S60S|S/60S|S-60S)\b
+          pattern: \b(S60S|S/60S|S-60S|SCH\s*60S)\b
           flags:
           - IGNORECASE
         S60:
-          pattern: \b(S60|S/60|S-60)\b
+          pattern: \b(S60|S/60|S-60|SCH\s*60)\b
           flags:
           - IGNORECASE
         XXS:

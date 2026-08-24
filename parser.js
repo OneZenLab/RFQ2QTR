@@ -337,10 +337,14 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
   uni.UNI_THREAD_TYPE    = me('UNI_THREAD_TYPE');
   uni.UNI_GASKET_TYPE    = me('UNI_GASKET_TYPE');
 
-  // 特例：描述含 "RED TEE" → TYPE=TEE，RED 归入 MISC（Python 原有逻辑）
-  if (upperDesc.includes('RED TEE')) {
-    if (uni.UNI_TYPE === 'RED') uni.UNI_TYPE = 'TEE';
-    if (!uni.UNI_MISC) uni.UNI_MISC = 'RED';
+  // 特例：描述同时命中 TEE 和 RED（顺序不限，如 "TEE RED" 或 "RED TEE"）
+  // → TYPE=TEE，RED 归入 MISC（原逻辑只认字面 "RED TEE" 子串，此处放宽为顺序无关）
+  if (uni.UNI_TYPE === 'RED') {
+    const teePat = enumPatterns.UNI_TYPE?.find(([v]) => v === 'TEE')?.[1];
+    if (teePat && new RegExp(teePat.source, teePat.flags).test(upperDesc)) {
+      uni.UNI_TYPE = 'TEE';
+      if (!uni.UNI_MISC) uni.UNI_MISC = 'RED';
+    }
   }
 
   // ── WT 提取 ───────────────────────────────────────────────────
@@ -348,15 +352,21 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
   const wtMatchRanges = [];  // 用于防止 OD 提取与 WT 位置重叠
 
   if (enumPatterns.UNI_WT) {
-    // 1. 从描述文本中逐一匹配 WT 枚举（遍历所有，非首个）
+    // 1. 从描述文本中逐一匹配 WT 枚举（遍历所有，非首个），按文本中出现的
+    //    位置排序（而非枚举字典声明顺序），保证与 OD 的先后顺序一一对应
+    //    —— 例如 "6" Sch40 * 4" Sch10S" 应得到 wts=[S40, S10S]
+    const wtCandidates = [];
     for (const [valueName, pat] of enumPatterns.UNI_WT) {
       const tp = new RegExp(pat.source, pat.flags);
       const m  = tp.exec(upperDesc);
       if (m) {
-        wts.push(valueName);
+        wtCandidates.push([m.index, valueName]);
         wtMatchRanges.push([m.index, m.index + m[0].length]);
       }
     }
+    wtCandidates.sort((a, b) => a[0] - b[0]);
+    wts = wtCandidates.map(([, v]) => v);
+
     // 2. 直接映射到 UNI_WT1/UNI_WT2 的列（如 SCH1、SCH2）
     for (const [colName, internal] of Object.entries(colSemantics)) {
       if (internal !== 'UNI_WT1' && internal !== 'UNI_WT2') continue;
@@ -437,6 +447,8 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
 
   // ── OD 分配规则 ───────────────────────────────────────────────
   const uniType = uni.UNI_TYPE.toUpperCase();
+  // 异径三通（TEE RED）：主管缩径端与支管共用第二段口径/壁厚
+  const isReducingTee = uniType === 'TEE' && uni.UNI_MISC === 'RED';
 
   if (ods.length) {
     // 减径管件（范围模式）：较大口径作为 OD1（Python 同逻辑）
@@ -451,7 +463,11 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
     if (uniType === 'TEE') {
       // 三通：OD1（主径）和 OD3（支管径），与 Python 一致
       uni.UNI_OD1 = ods[0];
-      if (ods.length >= 2) uni.UNI_OD3 = ods[1];
+      if (ods.length >= 2) {
+        uni.UNI_OD3 = ods[1];
+        // 异径三通：第二段口径同时写入 OD2
+        if (isReducingTee) uni.UNI_OD2 = ods[1];
+      }
     } else {
       if (ods.length >= 1) uni.UNI_OD1 = ods[0];
       if (ods.length >= 2) uni.UNI_OD2 = ods[1];
@@ -460,17 +476,19 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
   }
 
   // ── WT 分配规则 ───────────────────────────────────────────────
-  const odCount = [uni.UNI_OD1, uni.UNI_OD2, uni.UNI_OD3].filter(Boolean).length;
-
   if (wts.length) {
     if (uniType === 'TEE') {
       // TEE 有 2 个 OD 且 WT≥2 时：WT1 和 WT3（Python 原有逻辑）
-      if (odCount === 2 && wts.length >= 2) {
-        uni.UNI_WT1 = wts[0]; uni.UNI_WT3 = wts[1];
+      if (ods.length >= 2 && wts.length >= 2) {
+        uni.UNI_WT1 = wts[0];
+        uni.UNI_WT3 = wts[1];
+        // 异径三通：第二段壁厚同时写入 WT2
+        if (isReducingTee) uni.UNI_WT2 = wts[1];
       } else {
         uni.UNI_WT1 = wts[0];
       }
     } else {
+      const odCount = [uni.UNI_OD1, uni.UNI_OD2, uni.UNI_OD3].filter(Boolean).length;
       if (odCount <= 1) {
         // 只有 1 个 OD → 只显示 WT1
         uni.UNI_WT1 = wts[0];
