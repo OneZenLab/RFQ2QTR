@@ -54,11 +54,11 @@ lexer:
         target: UNI_END_PREPARATION
         flags:
         - IGNORECASE
-      - source: ^(SCH1)$
+      - source: ^(SCH1|SCHEDULE1)$
         target: UNI_WT1
         flags:
         - IGNORECASE
-      - source: ^(SCH2)$
+      - source: ^(SCH2|SCHEDULE2)$
         target: UNI_WT2
         flags:
         - IGNORECASE

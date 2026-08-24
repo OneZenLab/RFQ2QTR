@@ -262,8 +262,11 @@ function parseOdRange(sizeText) {
   if (!sizeText) return null;
   const text = String(sizeText).trim();
   // 与 Python 相同的正则：支持分数形式的第二段
-  const m = text.match(/\b(\d+)\s*[*Xx×]\s*([\d\s\-\/]+?)(?:\s*["']|NB|DN|\s*$|\s*\))/i)
-         ?? text.match(/\b(\d+)\s*[*Xx×]\s*([\d\s\-\/]+)/i);
+  // 加一个否定顺序环视 (?<![A-Za-z\/\-])，避免把壁厚写法（如 "S/20"、"S-40"）
+  // 里紧跟分隔符的数字尾巴误当成口径——这类数字前面是字母/斜杠/短横线，
+  // 不应被当作独立的口径数字
+  const m = text.match(/(?<![A-Za-z\/\-])\b(\d+)\s*[*Xx×]\s*([\d\s\-\/]+?)(?:\s*["']|NB|DN|\s*$|\s*\))/i)
+         ?? text.match(/(?<![A-Za-z\/\-])\b(\d+)\s*[*Xx×]\s*([\d\s\-\/]+)/i);
   if (!m) return null;
   const first      = m[1].trim();
   let   secondRaw  = m[2].trim();
@@ -399,42 +402,67 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
     isRangePat = true;
   } else if (enumPatterns.UNI_OD) {
     // 从文本中提取 OD 枚举，去除与 WT 位置重叠及小数误判
+    //
+    // 注意：候选匹配的"谁包含谁"判定不能依赖字典 key 的遍历顺序——JS 对象对
+    // 形如 '1'、'10'、'20' 这类整数形字符串 key 会自动按数值升序排到最前面
+    // （无视 YAML 里的原始声明顺序），导致像 '1 1/2' 这种本该优先命中的分数
+    // 口径反而排到所有整数 key 之后处理，使重叠的短匹配（如 '1'、'2'）先一步
+    // 被计入结果。因此这里改为：先收集全部候选（顺序无关），再统一按"位置升
+    // 序 + 同位置更长匹配优先"贪心选取，重叠的候选一律跳过（不仅仅是被完全
+    // 包含的情况）。
     const extractOds = (text) => {
-      const allMatches  = [];
-      const usedRanges  = [];
-
-      const addIfValid = (m, valueName) => {
-        const s = m.index, e = m.index + m[0].length;
-        // 已被更长匹配包含
-        if (usedRanges.some(([a, b]) => s >= a && e <= b)) return;
-        // 与 WT 位置重叠（wtMatchRanges 基于 upperDesc）
-        if (wtMatchRanges.some(([a, b]) => s < b && e > a)) return;
-        // 是小数的一部分（前一字符是数字或小数点）
-        if (s > 0 && (text[s - 1] === '.' || /\d/.test(text[s - 1]))) return;
-        // 后一字符是小数点
-        if (e < text.length && text[e] === '.') return;
-        usedRanges.push([s, e]);
-        allMatches.push([s, -m[0].length, valueName]);
-      };
+      const candidates = [];
 
       for (const [valueName, pat] of enumPatterns.UNI_OD) {
         const gp = new RegExp(pat.source, pat.flags.includes('i') ? 'gi' : 'g');
         let m;
-        while ((m = gp.exec(text)) !== null) addIfValid(m, valueName);
+        while ((m = gp.exec(text)) !== null) {
+          const s = m.index, e = m.index + m[0].length;
+          // 与 WT 位置重叠（wtMatchRanges 基于 upperDesc）
+          if (wtMatchRanges.some(([a, b]) => s < b && e > a)) continue;
+          // 是小数的一部分（前一字符是数字或小数点）
+          if (s > 0 && (text[s - 1] === '.' || /\d/.test(text[s - 1]))) continue;
+          // 后一字符是小数点
+          if (e < text.length && text[e] === '.') continue;
+          candidates.push([s, e, valueName]);
+        }
       }
 
-      // 按位置升序、同位置按匹配长度降序排列（与 Python all_matches.sort() 一致）
-      allMatches.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-      const seen = new Set(), result = [];
-      for (const [,, v] of allMatches) {
-        if (!seen.has(v)) { seen.add(v); result.push(v); }
+      // 位置升序；同位置时更长的匹配（更具体）优先
+      candidates.sort((a, b) => a[0] - b[0] || (b[1] - b[0]) - (a[1] - a[0]));
+
+      const result = [], seen = new Set();
+      let lastEnd = -1;
+      for (const [s, e, valueName] of candidates) {
+        if (s < lastEnd) continue; // 与已选中的更靠前/更长的匹配重叠，跳过
+        lastEnd = e;
+        if (!seen.has(valueName)) { seen.add(valueName); result.push(valueName); }
       }
       return result;
     };
 
     ods = extractOds(searchText);
-    // searchText 无结果时再从完整描述提取（Python 同逻辑）
-    if (!ods.length) ods = extractOds(upperDesc);
+    // searchText 结果不足 2 个时，也尝试从完整描述提取，取更完整的一份
+    // （避免像 SIZE1 这类只含单个数值的列，遮蔽了描述文本里 "OD1 * OD2" 的完整信息）
+    if (ods.length < 2 && searchText !== upperDesc) {
+      const fromDesc = extractOds(upperDesc);
+      if (fromDesc.length > ods.length) ods = fromDesc;
+    }
+  }
+
+  // 直接映射到 UNI_OD1/UNI_OD2 的列（如 SIZE1、SIZE2）：这类结构化列数据是
+  // 明确无歧义的，始终优先于从自由文本正则提取的结果（后者容易被描述里的
+  // 其他数字，如未映射的序号列泄漏进描述文本，干扰匹配顺序）
+  if (enumPatterns.UNI_OD) {
+    const colOds = [];
+    for (const [colName, internal] of Object.entries(colSemantics)) {
+      if (internal !== 'UNI_OD1' && internal !== 'UNI_OD2') continue;
+      const odVal = String(rowObj[colName] ?? '').trim().toUpperCase();
+      if (!odVal) continue;
+      const matched = matchFirstEnum(odVal, enumPatterns.UNI_OD);
+      if (matched) colOds.push(matched);
+    }
+    if (colOds.length) ods = colOds;
   }
 
   // ── 无 WT 时从 "BW 数字" 推断壁厚（Python 原有逻辑） ──────────
@@ -461,13 +489,10 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
     }
 
     if (uniType === 'TEE') {
-      // 三通：OD1（主径）和 OD3（支管径），与 Python 一致
+      // 三通：异径三通（TEE RED）填 OD1（主径）+ OD3（支管缩径），OD2 留空；
+      // 等径三通（TEE EQL）及其他情况只填 OD1，OD2/OD3 均留空
       uni.UNI_OD1 = ods[0];
-      if (ods.length >= 2) {
-        uni.UNI_OD3 = ods[1];
-        // 异径三通：第二段口径同时写入 OD2
-        if (isReducingTee) uni.UNI_OD2 = ods[1];
-      }
+      if (isReducingTee && ods.length >= 2) uni.UNI_OD3 = ods[1];
     } else {
       if (ods.length >= 1) uni.UNI_OD1 = ods[0];
       if (ods.length >= 2) uni.UNI_OD2 = ods[1];
@@ -478,15 +503,10 @@ function parseRowToUni(rowObj, headers, rowIndex, colSemantics, enumPatterns, ig
   // ── WT 分配规则 ───────────────────────────────────────────────
   if (wts.length) {
     if (uniType === 'TEE') {
-      // TEE 有 2 个 OD 且 WT≥2 时：WT1 和 WT3（Python 原有逻辑）
-      if (ods.length >= 2 && wts.length >= 2) {
-        uni.UNI_WT1 = wts[0];
-        uni.UNI_WT3 = wts[1];
-        // 异径三通：第二段壁厚同时写入 WT2
-        if (isReducingTee) uni.UNI_WT2 = wts[1];
-      } else {
-        uni.UNI_WT1 = wts[0];
-      }
+      // 异径三通：WT1（主管）+ WT3（支管缩径），WT2 留空；
+      // 等径三通及其他情况只填 WT1
+      uni.UNI_WT1 = wts[0];
+      if (isReducingTee && ods.length >= 2 && wts.length >= 2) uni.UNI_WT3 = wts[1];
     } else {
       const odCount = [uni.UNI_OD1, uni.UNI_OD2, uni.UNI_OD3].filter(Boolean).length;
       if (odCount <= 1) {
